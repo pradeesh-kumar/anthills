@@ -1,0 +1,8 @@
+Features
+------------
+- Need graceful shutdown for workers?
+- Use Logger, SLF4J
+- Add worker count for scheduledWorker
+- Add micronaut support
+- Add spring boot support
+- Add workrequest GC support

@@ -1,0 +1,35 @@
+# Top-level EditorConfig
+root = true
+
+# Global defaults
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Java - 2 spaces
+[*.java]
+indent_style = space
+indent_size = 2
+continuation_indent_size = 2
+
+# XML - 2 spaces
+[*.xml]
+indent_style = space
+indent_size = 2
+continuation_indent_size = 2
+
+# YAML - 2 spaces
+[*.yml]
+indent_style = space
+indent_size = 2
+
+[*.yaml]
+indent_style = space
+indent_size = 2
+
+# JSON - 2 spaces
+[*.json]
+indent_style = space
+indent_size = 2
