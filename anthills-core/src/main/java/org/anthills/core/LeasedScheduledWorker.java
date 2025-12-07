@@ -15,7 +15,7 @@ public non-sealed class LeasedScheduledWorker extends ScheduledWorker {
 
   public LeasedScheduledWorker(SchedulerConfig config, Runnable task) {
     super(config, task);
-    this.leaseManager = new DatabaseLeaseManager();
+    this.leaseManager = new JdbcLeaseManager();
     this.leasePeriod = config.period().plusMillis(100);
     this.watch = new Watch(this::monitorAndExtendLease, config.period());
   }

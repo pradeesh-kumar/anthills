@@ -2,15 +2,15 @@ package org.anthills.core;
 
 import java.time.Duration;
 
-public class DatabaseLeaseManager implements LeaseManager {
+public class JdbcLeaseManager implements LeaseManager {
 
-  private static final DatabaseLeaseManager INSTANCE = new DatabaseLeaseManager();
+  private static final JdbcLeaseManager INSTANCE = new JdbcLeaseManager();
 
-  public DatabaseLeaseManager() {
+  public JdbcLeaseManager() {
 
   }
 
-  public static DatabaseLeaseManager getInstance() {
+  public static JdbcLeaseManager getInstance() {
     return INSTANCE;
   }
 
