@@ -3,8 +3,7 @@ package org.anthills.core;
 import java.time.Instant;
 
 public record Lease(
-  String entityId,
+  String object,
   String owner,
-  Instant acquiredTs,
-  Instant until) {
+  Instant expiresAt) {
 }

@@ -6,3 +6,5 @@ Features
 - Add micronaut support
 - Add spring boot support
 - Add workrequest GC support
+- Add Lease gc
+- Add transactional support
