@@ -48,6 +48,9 @@
     <mockito.version>5.20.0</mockito.version>
     <jakarta.version>3.0.0</jakarta.version>
     <gson.version>2.13.2</gson.version>
+    <hikari.version>7.0.2</hikari.version>
+    <h2.version>2.4.240</h2.version>
+    <bytebuddy.version>1.18.2</bytebuddy.version>
   </properties>
 
   <dependencyManagement>
@@ -61,6 +64,16 @@
         <groupId>com.google.code.gson</groupId>
         <artifactId>gson</artifactId>
         <version>${gson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.zaxxer</groupId>
+        <artifactId>HikariCP</artifactId>
+        <version>${hikari.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.bytebuddy</groupId>
+        <artifactId>byte-buddy</artifactId>
+        <version>${bytebuddy.version}</version>
       </dependency>
 
       <!-- Test Dependencies -->
@@ -80,6 +93,12 @@
         <groupId>org.mockito</groupId>
         <artifactId>mockito-junit-jupiter</artifactId>
         <version>${mockito.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.h2database</groupId>
+        <artifactId>h2</artifactId>
+        <version>${h2.version}</version>
         <scope>test</scope>
       </dependency>
     </dependencies>

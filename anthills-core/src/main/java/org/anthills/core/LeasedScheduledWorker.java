@@ -5,17 +5,13 @@ import java.time.Duration;
 public non-sealed class LeasedScheduledWorker extends ScheduledWorker {
 
   private final LeaseService leaseService;
-  private final String leaseObject = this.getClass().getName();
   private final Duration leasePeriod;
   private final Watch watch;
+  private final String leaseObject = this.getClass().getName();
 
-  public LeasedScheduledWorker(Runnable task) {
-    this(SchedulerConfig.defaultConfig(), task);
-  }
-
-  public LeasedScheduledWorker(SchedulerConfig config, Runnable task) {
+  LeasedScheduledWorker(SchedulerConfig config, Runnable task, LeaseService leaseService) {
     super(config, task);
-    this.leaseService = null; // TODO fix this
+    this.leaseService = leaseService;
     this.leasePeriod = config.period().plusMillis(100);
     this.watch = new Watch(this::monitorAndExtendLease, config.period());
   }

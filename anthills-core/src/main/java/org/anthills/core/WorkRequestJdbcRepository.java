@@ -27,9 +27,8 @@ public class WorkRequestJdbcRepository implements WorkRequestRepository {
   @Override
   public <T> WorkRequest<T> create(WorkRequest<T> request) {
     String sql = "INSERT INTO work_request(id, payload, status, details, createdTs) VALUES (?, ?, ?, ?, ?)";
-    try (Connection con = dataSource.getConnection();
-         PreparedStatement stmt = con.prepareStatement(sql)) {
-
+    Connection con = TransactionContext.get();
+    try (PreparedStatement stmt = con.prepareStatement(sql)) {
       stmt.setString(1, request.id());
       stmt.setString(2, gson.toJson(request.payload()));
       stmt.setString(3, request.status().name());
@@ -47,9 +46,8 @@ public class WorkRequestJdbcRepository implements WorkRequestRepository {
   @Override
   public <T> WorkRequest<T> update(WorkRequest<T> request) {
     String sql = "UPDATE work_request SET payload=?, status=?, details=?, updatedTs=? WHERE id=?";
-    try (Connection con = dataSource.getConnection();
-         PreparedStatement stmt = con.prepareStatement(sql)) {
-
+    Connection con = TransactionContext.get();
+    try (PreparedStatement stmt = con.prepareStatement(sql)) {
       stmt.setString(1, gson.toJson(request.payload()));
       stmt.setString(2, request.status().name());
       stmt.setString(3, request.details());
@@ -67,9 +65,8 @@ public class WorkRequestJdbcRepository implements WorkRequestRepository {
   @Override
   public <T> void updateStatus(WorkRequest<T> request, WorkRequest.Status status) {
     String sql = "UPDATE work_request SET status=? WHERE id=?";
-    try (Connection con = dataSource.getConnection();
-         PreparedStatement stmt = con.prepareStatement(sql)) {
-
+    Connection con = TransactionContext.get();
+    try (PreparedStatement stmt = con.prepareStatement(sql)) {
       stmt.setString(1, status.name());
       stmt.setString(2, request.id());
       stmt.executeUpdate();

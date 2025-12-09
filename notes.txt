@@ -6,5 +6,7 @@ Features
 - Add micronaut support
 - Add spring boot support
 - Add workrequest GC support
+- Add idempotent operation support
 - Add Lease gc
-- Add transactional support
+- Create factory methods in AnthillsEngine to create
+- Provide Worker insights -> log latency metrics, counters, etc.

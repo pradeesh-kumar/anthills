@@ -10,7 +10,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public sealed class ScheduledWorker permits LeasedScheduledWorker {
+public sealed class ScheduledWorker implements Worker permits LeasedScheduledWorker {
 
   protected final SchedulerConfig config;
   protected final Runnable task;
@@ -50,6 +50,7 @@ public sealed class ScheduledWorker permits LeasedScheduledWorker {
   }
 
   @PostConstruct
+  @Override
   public void start() {
     if (stopped.get()) {
       throw new IllegalStateException("ScheduledWorker has been disposed already!");
@@ -68,6 +69,16 @@ public sealed class ScheduledWorker permits LeasedScheduledWorker {
       this.executor.shutdown();
     }
     this.stopped.set(true);
+  }
+
+  @Override
+  public void awaitTermination() {
+    try {
+      this.executor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      // LOG WARN
+    }
   }
 
   protected String identity() {

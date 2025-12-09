@@ -19,8 +19,8 @@ public class LeaseJdbcRepository implements LeaseRepository {
   @Override
   public Optional<Lease> findByObject(String object) {
     String sql = "SELECT object, owner, expires_at FROM leases WHERE object = ?";
-    try (Connection con = dataSource.getConnection();
-         PreparedStatement stmt = con.prepareStatement(sql)) {
+    Connection con = TransactionContext.get();
+    try (PreparedStatement stmt = con.prepareStatement(sql)) {
       stmt.setString(1, object);
       try (ResultSet rs = stmt.executeQuery()) {
         if (rs.next()) {
@@ -40,8 +40,8 @@ public class LeaseJdbcRepository implements LeaseRepository {
   @Override
   public boolean insertIfAbsent(Lease lease) {
     String sql = "INSERT INTO leases (object, owner, expires_at) VALUES (?, ?, ?)";
-    try (Connection con = dataSource.getConnection();
-         PreparedStatement stmt = con.prepareStatement(sql)) {
+    Connection con = TransactionContext.get();
+    try (PreparedStatement stmt = con.prepareStatement(sql)) {
       stmt.setString(1, lease.object());
       stmt.setString(2, lease.owner());
       stmt.setTimestamp(3, Timestamp.from(lease.expiresAt()));
@@ -61,8 +61,8 @@ public class LeaseJdbcRepository implements LeaseRepository {
       UPDATE leases SET expires_at = ?
       WHERE object = ? AND owner = ? AND expires_at > ?
       """;
-    try (Connection con = dataSource.getConnection();
-         PreparedStatement stmt = con.prepareStatement(sql)) {
+    Connection con = TransactionContext.get();
+    try (PreparedStatement stmt = con.prepareStatement(sql)) {
       stmt.setTimestamp(1, Timestamp.from(lease.expiresAt()));
       stmt.setString(2, lease.object());
       stmt.setString(3, lease.owner());
@@ -76,8 +76,8 @@ public class LeaseJdbcRepository implements LeaseRepository {
   @Override
   public void deleteByOwnerAndObject(String owner, String object) {
     String sql = "DELETE FROM leases WHERE object = ? AND owner = ?";
-    try (Connection con = dataSource.getConnection();
-         PreparedStatement stmt = con.prepareStatement(sql)) {
+    Connection con = TransactionContext.get();
+    try (PreparedStatement stmt = con.prepareStatement(sql)) {
       stmt.setString(1, object);
       stmt.setString(2, owner);
       stmt.executeUpdate();
