@@ -25,8 +25,7 @@ public class AnthillsEngine {
     this.leaseRepository = new LeaseJdbcRepository(dataSource);
     this.workRequestRepository = new WorkRequestJdbcRepository(dataSource);
 
-    LeaseService originalLeaseService = new LeaseService(leaseRepository, txManager);
-    this.leaseService = TransactionalProxy.create(originalLeaseService, txManager);
+    this.leaseService = TransactionalProxy.create(new LeaseService(leaseRepository), txManager);
 
     this.workRequestService = null; // TODO instantiate work request service
   }
