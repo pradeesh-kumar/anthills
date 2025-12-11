@@ -1,4 +1,4 @@
-package org.anthills.core;
+package org.anthills.core.utils;
 
 public class Utils {
 

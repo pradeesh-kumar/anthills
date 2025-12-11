@@ -12,6 +12,8 @@ import net.bytebuddy.implementation.bind.annotation.SuperCall;
 import net.bytebuddy.implementation.bind.annotation.This;
 import net.bytebuddy.matcher.ElementMatchers;
 import org.anthills.core.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -21,6 +23,8 @@ import java.util.Arrays;
 import java.util.concurrent.Callable;
 
 public class TransactionalProxy {
+
+  private static final Logger log =  LoggerFactory.getLogger(TransactionalProxy.class);
 
   static <T> T create(T target, TransactionManager txManager) {
     try {
@@ -40,7 +44,7 @@ public class TransactionalProxy {
 
         // --- Intercept Transactional Annotated Methods ---
         .method(ElementMatchers.isAnnotatedWith(Transactional.class))
-        .intercept(MethodDelegation.to(new TransactionInterceptor<T>(target, txManager)))
+        .intercept(MethodDelegation.to(new TransactionInterceptor<>(target, txManager)))
 
         .make()
         .load(targetClass.getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
@@ -78,7 +82,7 @@ public class TransactionalProxy {
 
     @RuntimeType
     public static void afterConstruction(@This Object proxy) {
-      System.out.println("Proxy constructed safely: " + proxy.getClass());
+      log.debug("Proxy constructed: {}", proxy.getClass());
     }
 
     private static Object defaultValue(Class<?> type) {
@@ -107,9 +111,10 @@ public class TransactionalProxy {
       this.txManager = txManager;
     }
 
+    @RuntimeType
     public Object intercept(@SuperCall Callable<Object> superCall, @Origin Method method, @AllArguments Object[] args) throws Throwable {
       Method originalMethod = target.getClass().getDeclaredMethod(method.getName(), method.getParameterTypes());
-      return txManager.execute(() -> originalMethod.invoke(args));
+      return txManager.execute(superCall::call);
     }
   }
 }

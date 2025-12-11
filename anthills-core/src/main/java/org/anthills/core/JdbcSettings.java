@@ -1,9 +1,11 @@
 package org.anthills.core;
 
-import java.util.Locale;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import static org.anthills.core.Utils.isBlank;
+import java.util.Locale;
+
+import static org.anthills.core.utils.Utils.isBlank;
 
 public record JdbcSettings(
   String jdbcUrl,
@@ -14,14 +16,12 @@ public record JdbcSettings(
   long connectionTimeoutMs
 ) {
 
-  private static final Logger log = Logger.getLogger(JdbcSettings.class.getName());
+  private static final Logger log =  LoggerFactory.getLogger(JdbcSettings.class);
 
   private static void warnIfNonProdDatabase(String jdbcUrl) {
     String url = jdbcUrl.toLowerCase(Locale.ROOT);
     if (url.contains(":h2:mem:") || url.contains(":sqlite:") || url.contains(":derby:memory:")) {
-      log.warning(() -> String.format(
-        "JDBC URL [%s] appears to use an in-memory or development-only database. " +
-          "Avoid using this in production.", jdbcUrl));
+      log.warn("JDBC URL {} appears to use an in-memory or development-only database. Avoid using this in production.", jdbcUrl);
     }
   }
 

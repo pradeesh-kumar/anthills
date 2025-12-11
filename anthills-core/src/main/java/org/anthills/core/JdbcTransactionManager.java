@@ -1,9 +1,15 @@
 package org.anthills.core;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.SQLException;
 
 public class JdbcTransactionManager implements TransactionManager {
+
+  private static final Logger log =  LoggerFactory.getLogger(JdbcTransactionManager.class);
 
   private final DataSource dataSource;
 
@@ -26,8 +32,8 @@ public class JdbcTransactionManager implements TransactionManager {
       } finally {
         TransactionContext.clear();
       }
-    } catch (Throwable e) {
-      throw new RuntimeException("Transaction failed", e);
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to get JDBC Connection", e);
     }
   }
 }

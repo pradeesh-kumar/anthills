@@ -3,6 +3,9 @@ package org.anthills.core;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.anthills.commons.WorkRequest;
+import org.anthills.core.utils.JdbcSchemaProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -12,7 +15,9 @@ import java.util.function.Consumer;
 
 public class AnthillsEngine {
 
-  private final DataSource dataSource;
+  private static final Logger log = LoggerFactory.getLogger(AnthillsEngine.class);
+
+  private final String dataSourceIdentity;
   private final TransactionManager txManager;
   private final LeaseRepository leaseRepository;
   private final LeaseService leaseService;
@@ -20,18 +25,25 @@ public class AnthillsEngine {
   private final WorkRequestService workRequestService;
 
   private AnthillsEngine(DataSource dataSource) {
-    this.dataSource = dataSource;
+    JdbcSchemaProvider.initializeSchema(dataSource);
+    this.dataSourceIdentity = deriveIdentityFromDataSource(dataSource);
     this.txManager = new JdbcTransactionManager(dataSource);
-    this.leaseRepository = new LeaseJdbcRepository(dataSource);
+    this.leaseRepository = new LeaseJdbcRepository();
     this.workRequestRepository = new WorkRequestJdbcRepository(dataSource);
-
     this.leaseService = TransactionalProxy.create(new LeaseService(leaseRepository), txManager);
-
     this.workRequestService = null; // TODO instantiate work request service
   }
 
+  private static String deriveIdentityFromDataSource(DataSource dataSource) {
+    try (Connection conn = dataSource.getConnection()) {
+      return conn.getMetaData().getURL(); // Safe as key if one DataSource per URL
+    } catch (SQLException e) {
+      throw new RuntimeException("Unable to derive datasource key", e);
+    }
+  }
+
   public static AnthillsEngine fromJdbcDataSource(DataSource dataSource) {
-    Objects.requireNonNull(dataSource,  "DataSource must not be null");
+    Objects.requireNonNull(dataSource, "DataSource must not be null");
     return new AnthillsEngine(dataSource);
   }
 
@@ -65,21 +77,6 @@ public class AnthillsEngine {
   }
 
   public void awaitTermination() {
-
-  }
-
-  private String detectDialect(DataSource dataSource) throws SQLException {
-    try (Connection conn = dataSource.getConnection()) {
-      String dbName = conn.getMetaData().getDatabaseProductName().toLowerCase();
-      return switch (dbName) {
-        case "postgresql" -> "org.hibernate.dialect.PostgreSQLDialect";
-        case "mysql" -> "org.hibernate.dialect.MySQL8Dialect";
-        case "mariadb" -> "org.hibernate.dialect.MariaDBDialect";
-        case "oracle" -> "org.hibernate.dialect.Oracle12cDialect";
-        case "microsoft sql server" -> "org.hibernate.dialect.SQLServerDialect";
-        case "h2" -> "org.hibernate.dialect.H2Dialect";
-        default -> throw new IllegalArgumentException("Unsupported DB: " + dbName);
-      };
-    }
+    throw new IllegalStateException("not implemented");
   }
 }
