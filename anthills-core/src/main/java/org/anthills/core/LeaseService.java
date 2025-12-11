@@ -60,4 +60,10 @@ public class LeaseService {
     log.info("Releasing lease from {} on the object {}", owner, object);
     leaseRepository.deleteByOwnerAndObject(owner, object);
   }
+
+  @Transactional
+  public boolean exists(String owner, String object) {
+    log.info("Trying to check if exists from {} for the object {}", owner, object);
+    return leaseRepository.existsByOwnerAndObject(owner, object);
+  }
 }

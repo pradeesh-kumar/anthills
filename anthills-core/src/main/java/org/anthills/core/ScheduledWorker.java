@@ -72,6 +72,7 @@ public sealed class ScheduledWorker implements Worker permits LeasedScheduledWor
   }
 
   @PreDestroy
+  @Override
   public void stop() {
     log.debug("[{}] Shutting down ScheduledWorker", identity);
     if (this.executor != null) {
@@ -83,6 +84,7 @@ public sealed class ScheduledWorker implements Worker permits LeasedScheduledWor
 
   protected void interruptCurrentTask() {
     log.debug("[{}] Interrupting the current task", identity);
+    running.set(false);
     taskThread.get().interrupt();
   }
 

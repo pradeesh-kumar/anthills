@@ -4,6 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public non-sealed class LeasedScheduledWorker extends ScheduledWorker {
 
@@ -13,6 +15,7 @@ public non-sealed class LeasedScheduledWorker extends ScheduledWorker {
   private final Duration leasePeriod;
   private final Watch watch;
   private final String leaseObject;
+  private final Lock leaseMonitorLock = new ReentrantLock();
 
   LeasedScheduledWorker(SchedulerConfig config, Runnable task, LeaseService leaseService) {
     super(config, task);
@@ -28,30 +31,57 @@ public non-sealed class LeasedScheduledWorker extends ScheduledWorker {
       log.debug("[{}] Existing task is still running.", identity());
       return;
     }
+    boolean leaseAcquired = false;
     try {
-      if (!leaseService.acquire(identity(), leaseObject, leasePeriod)) {
+      leaseAcquired = leaseService.acquire(identity(), leaseObject, leasePeriod);
+      if (!leaseAcquired) {
         log.info("Entity {} Could not acquire lease on object {}", identity(), leaseObject);
         return;
       }
       watch.start();
       super.runTask();
-      watch.stop();
-      leaseService.release(identity(), leaseObject);
     } catch (Exception e) {
       log.error("[{}] Error running LeasedScheduledWorker task", identity(), e);
-      watch.stop();
       this.stop();
+    } finally {
+      watch.stop();
+      if (leaseAcquired) {
+        leaseService.release(identity(), leaseObject);
+      }
     }
   }
 
   private void monitorAndExtendLease() {
-    if (!running.get()) {
-      watch.stop();
+    if (!leaseMonitorLock.tryLock()) {
+      return;
     }
-    if (!leaseService.extend(identity(), leaseObject, leasePeriod)) {
-      log.warn("Entity {} could not extend lease on object {}", identity(), leaseObject);
-      watch.stop();
-      super.interruptCurrentTask();
+    try {
+      if (!running.get()) {
+        watch.stop();
+        return;
+      }
+      if (!leaseService.extend(identity(), leaseObject, leasePeriod)) {
+        log.warn("Entity {} could not extend lease on object {}", identity(), leaseObject);
+        watch.stop();
+        super.interruptCurrentTask();
+      }
+    } catch (Exception e) {
+      log.error("[{}] Failed to extend lease", identity(), e);
+      if (!doesLeaseStillExists()) {
+        watch.stop();
+        super.interruptCurrentTask();
+      }
+    } finally {
+      leaseMonitorLock.unlock();
+    }
+  }
+
+  private boolean doesLeaseStillExists() {
+    try {
+      return leaseService.exists(identity(), leaseObject);
+    } catch (Exception e) {
+      log.warn("[{}] Failed to check if the lease exists", identity(), e);
+      return false;
     }
   }
 }

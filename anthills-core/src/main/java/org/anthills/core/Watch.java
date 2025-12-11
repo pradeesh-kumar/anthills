@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
 
 public class Watch {
 
@@ -13,13 +14,13 @@ public class Watch {
   private final String name;
   private final Runnable task;
   private final Duration period;
-  private final AtomicBoolean running;
+  private final AtomicBoolean running = new AtomicBoolean(false);
+  private Thread thread;
 
   public Watch(String name, Runnable task, Duration period) {
     this.name = name;
     this.task = task;
     this.period = period;
-    this.running = new AtomicBoolean(false);
   }
 
   public void start() {
@@ -27,23 +28,28 @@ public class Watch {
       throw new IllegalStateException("Already started");
     }
     log.debug("[{}] Started watch", name);
-    Thread.startVirtualThread(() -> {
+    thread = Thread.startVirtualThread(() -> {
+      Thread.currentThread().setName("Watch-" + name);
       while (running.get()) {
-        log.debug("[{}] Running the Watch task", name);
         try {
           task.run();
-          Thread.sleep(period.toMillis());
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
         } catch (Throwable t) {
-          log.warn("[{}] Failed to run the Watch Task", name, t);
+          log.warn("[{}] Failed to run the watch task", name, t);
+        }
+        LockSupport.parkNanos(period.toNanos());
+        if (Thread.interrupted()) {
+          break;
         }
       }
+      log.debug("[{}] Watch thread exiting", name);
     });
   }
 
   public void stop() {
     running.set(false);
+    if (thread != null) {
+      thread.interrupt();
+    }
     log.debug("[{}] Stopped the watch", name);
   }
 }

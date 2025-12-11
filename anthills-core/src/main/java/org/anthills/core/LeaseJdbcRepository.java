@@ -67,7 +67,7 @@ public class LeaseJdbcRepository implements LeaseRepository {
       stmt.setTimestamp(3, Timestamp.from(Instant.now()));
       return stmt.executeUpdate() > 0;
     } catch (SQLException e) {
-      throw new RuntimeException("Failed to update lease", e);
+      throw new RuntimeException("Failed to update expired lease", e);
     }
   }
 
@@ -99,7 +99,26 @@ public class LeaseJdbcRepository implements LeaseRepository {
       stmt.setString(2, owner);
       stmt.executeUpdate();
     } catch (SQLException e) {
-      throw new RuntimeException("Failed to release lease", e);
+      throw new RuntimeException("Failed to delete lease", e);
+    }
+  }
+
+  @Override
+  public boolean existsByOwnerAndObject(String owner, String object) {
+    String sql = "SELECT 1 FROM lease WHERE object = ? AND owner = ?";
+    log.debug("Executing the query {} ", sql);
+    Connection con = TransactionContext.get();
+    try (PreparedStatement stmt = con.prepareStatement(sql)) {
+      stmt.setString(1, object);
+      stmt.setString(2, owner);
+      try (ResultSet rs = stmt.executeQuery()) {
+        if (rs.next()) {
+          return true;
+        }
+      }
+      return false;
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to check lease existance", e);
     }
   }
 }

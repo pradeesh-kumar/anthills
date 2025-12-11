@@ -8,4 +8,5 @@ public interface LeaseRepository {
   boolean updateIfExpired(Lease lease);
   boolean updateIfOwned(Lease lease);
   void deleteByOwnerAndObject(String owner, String object);
+  boolean existsByOwnerAndObject(String owner, String object);
 }

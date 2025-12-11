@@ -35,6 +35,11 @@ public sealed class RequestWorker<T> implements Worker permits LeasedRequestWork
   }
 
   @Override
+  public void stop() {
+    throw new UnsupportedOperationException("stop() is not implemented yet");
+  }
+
+  @Override
   public void awaitTermination() {
     throw new UnsupportedOperationException("start() is not implemented yet");
   }
