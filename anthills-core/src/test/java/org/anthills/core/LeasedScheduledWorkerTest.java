@@ -19,9 +19,8 @@ public class LeasedScheduledWorkerTest {
       .build());
 
     LeasedScheduledWorker leasedScheduledWorker = engine.newLeasedScheduledWorker(SchedulerConfig.defaultConfig("hello"), () -> {
-      task("Hello World", 1000);
+      task("Hello World", 100);
     });
-    leasedScheduledWorker.start();
 
     AnthillsEngine engine2 = AnthillsEngine.fromJdbcSettings(JdbcSettings.builder()
       .jdbcUrl("jdbc:h2:mem:anthills_test;DB_CLOSE_DELAY=-1")
@@ -30,8 +29,9 @@ public class LeasedScheduledWorkerTest {
       .build());
 
     LeasedScheduledWorker leasedScheduledWorker2 = engine2.newLeasedScheduledWorker(SchedulerConfig.defaultConfig("hello"), () -> {
-      task("Bye World", 2000);
+      task("Bye World", 100);
     });
+    leasedScheduledWorker.start();
     leasedScheduledWorker2.start();
 
     leasedScheduledWorker.awaitTermination();

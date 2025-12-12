@@ -12,3 +12,4 @@ Features
 - Provide Worker insights -> log latency metrics, counters, etc.
 - Fix schema for those which doesn't support 'IF NOT EXISTS'
 - Feature: Enable custom lease key provider so that clients can provide their own lease key
+- Revisit indices in Workrequest table

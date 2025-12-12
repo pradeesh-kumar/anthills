@@ -1,5 +1,6 @@
 package org.anthills.core.utils;
 
+import org.anthills.core.DbInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -7,11 +8,9 @@ import javax.sql.DataSource;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashSet;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -21,60 +20,29 @@ public class JdbcSchemaProvider {
   private static final Logger log = LoggerFactory.getLogger(JdbcSchemaProvider.class);
   public static final Set<String> schemaInitializedDataSources = new HashSet<>();
 
-  public static void initializeSchema(DataSource dataSource) {
+  public static void initializeSchema(DataSource dataSource, DbInfo dbInfo) {
     log.info("Initializing database schema");
     synchronized (schemaInitializedDataSources) {
       try (Connection conn = dataSource.getConnection()) {
         conn.setAutoCommit(false);
-        String dbIdentity = conn.getMetaData().getURL();
-        if (schemaInitializedDataSources.contains(dbIdentity)) {
-          log.debug("Schema already initialized for the datasource {}", dbIdentity);
+        if (schemaInitializedDataSources.contains(dbInfo.identity())) {
+          log.debug("Schema already initialized for the datasource {}", dbInfo.identity());
           return;
         }
-        String schemaFile = getSchemaFile(conn);
+        String schemaFile = getSchemaFile(dbInfo.dialect());
         log.debug("Schema file: {}", schemaFile);
         String sql = readSchemaFromClasspath("/sqldb/" + schemaFile);
         executeSqlStatements(conn, sql);
         conn.commit();
-        schemaInitializedDataSources.add(dbIdentity);
+        schemaInitializedDataSources.add(dbInfo.identity());
       } catch (Exception e) {
         throw new RuntimeException("Failed to initialize schema", e);
       }
     }
   }
 
-  private static String getSchemaFile(Connection conn) throws SQLException {
-    DatabaseMetaData metaData = conn.getMetaData();
-    String dbName = metaData.getDatabaseProductName().toLowerCase(Locale.ROOT);
-    if (dbName.contains("sqlite")) {
-      return "schema-sqlite.sql";
-    }
-    String url = metaData.getURL().toLowerCase(Locale.ROOT);
-    if (url.contains("aurora")) {
-      if (dbName.contains("mysql")) {
-        return "schema-mysql.sql";
-      } else if (dbName.contains("postgresql")) {
-        return "schema-postgresql.sql";
-      }
-      throw new UnsupportedOperationException("Unknown Aurora flavor: " + dbName);
-    }
-    if (dbName.contains("spanner")) {
-      return "schema-spanner.sql";
-    }
-    if (dbName.contains("google") && dbName.contains("spanner")) {
-      return "schema-spanner.sql";
-    }
-    if (dbName.contains("db2")) {
-      return "schema-db2.sql";
-    }
-    return switch (dbName) {
-      case "postgresql" -> "schema-postgresql.sql";
-      case "mysql" -> "schema-mysql.sql";
-      case "h2" -> "schema-h2.sql";
-      case "microsoft sql server" -> "schema-mssqlserver.sql";
-      case "oracle" -> "schema-oracle.sql";
-      default -> throw new UnsupportedOperationException("Unsupported DB: " + dbName);
-    };
+  private static String getSchemaFile(DbInfo.Dialect dialect) {
+    return "schema" + dialect.name().toLowerCase() + ".sql";
   }
 
   private static String readSchemaFromClasspath(String path) throws Exception {

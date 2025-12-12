@@ -1,7 +1,6 @@
 package org.anthills.core;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import org.anthills.commons.WorkRequest;
 
 import javax.sql.DataSource;
@@ -14,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static org.anthills.core.utils.Utils.getInstantSafely;
+
 public class WorkRequestJdbcRepository implements WorkRequestRepository {
 
   private final DataSource dataSource;
@@ -21,7 +22,7 @@ public class WorkRequestJdbcRepository implements WorkRequestRepository {
 
   WorkRequestJdbcRepository(DataSource dataSource) {
     this.dataSource = dataSource;
-    this.gson = new GsonBuilder().create();
+    this.gson = new Gson();
   }
 
   @Override
@@ -115,27 +116,12 @@ public class WorkRequestJdbcRepository implements WorkRequestRepository {
       stmt.setInt(2, page.offset());
       try (ResultSet rs = stmt.executeQuery()) {
         while (rs.next()) {
-          WorkRequest<T> wr = WorkRequest.<T>builder()
-            .setId(rs.getString("id"))
-            .setDetails(rs.getString("details"))
-            .setStatus(WorkRequest.Status.valueOf(rs.getString("status")))
-            .setCreatedTs(getInstantSafely(rs, "createdTs"))
-            .setCompletedTs(getInstantSafely(rs, "completedTs"))
-            .setStartedTs(getInstantSafely(rs, "startedTs"))
-            .setUpdatedTs(getInstantSafely(rs, "updatedTs"))
-            .setPayload(gson.fromJson(rs.getString("payload"), clazz))
-            .build();
-          results.add(wr);
+          results.add(WorkRequestMapper.map(rs, clazz));
         }
       }
     } catch (SQLException e) {
       throw new RuntimeException("Failed to fetch non-terminal WorkRequests", e);
     }
     return results;
-  }
-
-  private static java.time.Instant getInstantSafely(ResultSet rs, String column) throws SQLException {
-    Timestamp ts = rs.getTimestamp(column);
-    return ts != null ? ts.toInstant() : null;
   }
 }

@@ -8,8 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -17,29 +15,18 @@ public class AnthillsEngine {
 
   private static final Logger log = LoggerFactory.getLogger(AnthillsEngine.class);
 
-  private final String dataSourceIdentity;
   private final TransactionManager txManager;
   private final LeaseRepository leaseRepository;
   private final LeaseService leaseService;
-  private final WorkRequestRepository workRequestRepository;
-  private final WorkRequestService workRequestService;
+  private final WorkItemClaimer workItemClaimer;
 
   private AnthillsEngine(DataSource dataSource) {
-    JdbcSchemaProvider.initializeSchema(dataSource);
-    this.dataSourceIdentity = deriveIdentityFromDataSource(dataSource);
+    DbInfo dbInfo = DbInfo.detect(dataSource);
+    JdbcSchemaProvider.initializeSchema(dataSource, dbInfo);
     this.txManager = new JdbcTransactionManager(dataSource);
     this.leaseRepository = new LeaseJdbcRepository();
-    this.workRequestRepository = new WorkRequestJdbcRepository(dataSource);
     this.leaseService = TransactionalProxy.create(new LeaseService(leaseRepository), txManager);
-    this.workRequestService = null; // TODO instantiate work request service
-  }
-
-  private static String deriveIdentityFromDataSource(DataSource dataSource) {
-    try (Connection conn = dataSource.getConnection()) {
-      return conn.getMetaData().getURL(); // Safe as key if one DataSource per URL
-    } catch (SQLException e) {
-      throw new RuntimeException("Unable to derive datasource key", e);
-    }
+    this.workItemClaimer = TransactionalProxy.create(WorkItemClaimerFactory.getClaimerFor(dbInfo), txManager);
   }
 
   public static AnthillsEngine fromJdbcDataSource(DataSource dataSource) {

@@ -1,16 +1,20 @@
 CREATE TABLE IF NOT EXISTS work_request
 (
     id           VARCHAR(100) PRIMARY KEY,
+    payload_class VARCHAR(1000) NOT NULL,
     payload      VARCHAR(65535) NOT NULL,
     status       VARCHAR(20)    NOT NULL,
     details      VARCHAR(65535),
+    max_retries  INTEGER NOT NULL DEFAULT 0,
+    owner        VARCHAR(100),
+    lease_until  TIMESTAMP,
     created_ts   TIMESTAMP      NOT NULL,
     updated_ts   TIMESTAMP,
     started_ts   TIMESTAMP,
     completed_ts TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_work_request_status ON work_request (status);
+CREATE INDEX IF NOT EXISTS idx_work_request_payload_class_status ON work_request (payload_class, status);
 
 CREATE TABLE IF NOT EXISTS lease
 (
