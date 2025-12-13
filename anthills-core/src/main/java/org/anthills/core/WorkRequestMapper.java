@@ -15,7 +15,7 @@ public class WorkRequestMapper {
   public static <T> WorkRequest<T> map(ResultSet rs, Class<T> payloadType) throws SQLException {
     return WorkRequest.<T>builder()
       .setId(rs.getString("id"))
-      .setPayloadClass(payloadType)
+      .setPayloadClass(payloadType.getSimpleName())
       .setPayload(gson.fromJson(rs.getString("payload"), payloadType))
       .setStatus(WorkRequest.Status.valueOf(rs.getString("status")))
       .setDetails(rs.getString("details"))

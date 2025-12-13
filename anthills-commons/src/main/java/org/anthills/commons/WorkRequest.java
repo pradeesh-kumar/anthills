@@ -11,6 +11,7 @@ public record WorkRequest<T>(
   Status status,
   String details,
   int maxRetries,
+  int attempts,
   String owner,
   Instant leaseUntil,
   Instant createdTs,
@@ -21,6 +22,23 @@ public record WorkRequest<T>(
 
   public static <T> Builder<T> builder() {
     return new Builder<>();
+  }
+
+  public Builder<T> toBuilder() {
+    return new Builder<T>()
+      .setId(this.id)
+      .setPayloadClass(this.payloadClass)
+      .setPayload(this.payload)
+      .setStatus(this.status)
+      .setDetails(this.details)
+      .setMaxRetries(this.maxRetries)
+      .setAttempts(this.attempts)
+      .setOwner(this.owner)
+      .setLeaseUntil(this.leaseUntil)
+      .setCreatedTs(this.createdTs)
+      .setUpdatedTs(this.updatedTs)
+      .setStartedTs(this.startedTs)
+      .setCompletedTs(this.completedTs);
   }
 
   public enum Status {
@@ -59,6 +77,7 @@ public record WorkRequest<T>(
     private Status status;
     private String details;
     private int maxRetries;
+    private int attempts;
     private String owner;
     private Instant leaseUntil;
     private Instant createdTs;
@@ -111,6 +130,11 @@ public record WorkRequest<T>(
       return this;
     }
 
+    public Builder<T> setAttempts(int attempts) {
+      this.attempts = attempts;
+      return this;
+    }
+
     public Builder<T> setOwner(String owner) {
       this.owner = owner;
       return this;
@@ -121,14 +145,13 @@ public record WorkRequest<T>(
       return this;
     }
 
-    public Builder<T> setPayloadClass(Class<T> payloadClass) {
-      this.payloadClass = payloadClass.getName();
+    public Builder<T> setPayloadClass(String payloadClass) {
+      this.payloadClass = payloadClass;
       return this;
     }
 
     public WorkRequest<T> build() {
-      // TODO add validator
-      return new WorkRequest<>(id, payloadClass, payload, status, details, maxRetries, owner, leaseUntil, createdTs, updatedTs, startedTs, completedTs);
+      return new WorkRequest<>(id, payloadClass, payload, status, details, maxRetries, attempts, owner, leaseUntil, createdTs, updatedTs, startedTs, completedTs);
     }
   }
 }

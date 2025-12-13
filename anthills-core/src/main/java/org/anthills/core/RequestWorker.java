@@ -1,6 +1,7 @@
 package org.anthills.core;
 
 import org.anthills.commons.WorkRequest;
+import org.anthills.core.contract.WorkRequestService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +25,7 @@ public class RequestWorker<T> implements Worker {
   private final WorkerConfig config;
   private final Consumer<WorkRequest<T>> wrConsumer;
   private final WorkItemClaimer workItemClaimer;
+  private final WorkRequestService workRequestService;
   private final String identity = UUID.randomUUID().toString();
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final Class<T> payloadType;
@@ -31,7 +33,7 @@ public class RequestWorker<T> implements Worker {
   private ExecutorService workerPool;
   private Watch leaseRenewWatch;
 
-  RequestWorker(WorkerConfig config, WorkItemClaimer workItemClaimer, Class<T> payloadType, Consumer<WorkRequest<T>> wrConsumer) {
+  RequestWorker(WorkerConfig config, WorkItemClaimer workItemClaimer, WorkRequestService workRequestService, Class<T> payloadType, Consumer<WorkRequest<T>> wrConsumer) {
     Objects.requireNonNull(config, "config is required");
     Objects.requireNonNull(workItemClaimer, "workItemClaimer is required");
     Objects.requireNonNull(payloadType, "payloadType is required");
@@ -40,6 +42,7 @@ public class RequestWorker<T> implements Worker {
     this.wrConsumer = wrConsumer;
     this.workItemClaimer = workItemClaimer;
     this.payloadType = payloadType;
+    this.workRequestService = workRequestService;
   }
 
   public String identity() {
@@ -77,18 +80,16 @@ public class RequestWorker<T> implements Worker {
       .statuses(WorkRequest.Status.nonTerminalStatuses())
       .build();
     List<WorkRequest<T>> claimedWrs = workItemClaimer.claim(claimRequest);
-    claimedWrs.forEach(wr -> {
-      workerPool.submit(() -> processTask(wr));
-    });
+    claimedWrs.forEach(wr -> workerPool.submit(() -> processTask(wr)));
   }
 
   private void processTask(WorkRequest<T> wr) {
     try {
       wrConsumer.accept(wr);
-      claimService.markSucceeded(wr.getId(), identity);
+      workRequestService.markSucceeded(wr);
     } catch (Exception e) {
-      log.error("failed processing {}", wr.getId(), e);
-      claimService.markFailedOrRetry(wr.getId(), identity, e);
+      log.error("failed processing {}", wr.id(), e);
+      workRequestService.markFailedOrRetry(wr);
     }
   }
 

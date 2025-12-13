@@ -9,7 +9,7 @@ import java.sql.SQLException;
 
 public class JdbcTransactionManager implements TransactionManager {
 
-  private static final Logger log =  LoggerFactory.getLogger(JdbcTransactionManager.class);
+  private static final Logger log = LoggerFactory.getLogger(JdbcTransactionManager.class);
 
   private final DataSource dataSource;
 

@@ -3,7 +3,6 @@ package org.anthills.core;
 import com.google.gson.Gson;
 import org.anthills.commons.WorkRequest;
 
-import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -36,32 +35,18 @@ public class WorkRequestJdbcRepository implements WorkRequestRepository {
   }
 
   @Override
-  public <T> WorkRequest<T> update(WorkRequest<T> request) {
-    String sql = "UPDATE work_request SET payload=?, status=?, details=?, updatedTs=? WHERE id=?";
-    Connection con = TransactionContext.get();
-    try (var stmt = con.prepareStatement(sql)) {
-      stmt.setString(1, gson.toJson(request.payload()));
-      stmt.setString(2, request.status().name());
-      stmt.setString(3, request.details());
-      stmt.setTimestamp(4, new Timestamp(System.currentTimeMillis()));
-      stmt.setString(5, request.id());
-      stmt.executeUpdate();
-
-      return (WorkRequest<T>) findById(request.id(), request.payload().getClass())
-        .orElseThrow(() -> new SQLException("Updated WorkRequest not found: " + request.id()));
-    } catch (SQLException e) {
-      throw new RuntimeException("Failed to update WorkRequest", e);
-    }
-  }
-
-  @Override
-  public <T> void updateStatus(WorkRequest<T> request, WorkRequest.Status status) {
-    String sql = "UPDATE work_request SET status=? WHERE id=?";
+  public boolean updateStatus(String id, WorkRequest.Status status) {
+    String sql = """
+      UPDATE work_request
+      SET status=?, updated_ts=NOW(), completed_ts=NOW(), lease_until=NULL, owner=NULL
+      WHERE id=? AND status != ?
+      """;
     Connection con = TransactionContext.get();
     try (var stmt = con.prepareStatement(sql)) {
       stmt.setString(1, status.name());
-      stmt.setString(2, request.id());
-      stmt.executeUpdate();
+      stmt.setString(2, id);
+      stmt.setString(3, status.name());
+      return stmt.executeUpdate() > 0;
     } catch (SQLException e) {
       throw new RuntimeException("Failed to update WorkRequest status", e);
     }
@@ -102,5 +87,36 @@ public class WorkRequestJdbcRepository implements WorkRequestRepository {
       throw new RuntimeException("Failed to fetch non-terminal WorkRequests", e);
     }
     return results;
+  }
+
+  @Override
+  public boolean exists(String id) {
+    String sql = "SELECT 1 FROM work_request WHERE id=?";
+    Connection con = TransactionContext.get();
+    try (var stmt = con.prepareStatement(sql)) {
+      stmt.setString(1, id);
+      try (ResultSet rs = stmt.executeQuery()) {
+        return rs.next();
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to fetch WorkRequest with id: " + id, e);
+    }
+  }
+
+  @Override
+  public boolean incrementAttempt(String id) {
+    String sql = """
+      UPDATE work_request
+      SET attempts = attempts + 1, updated_ts=NOW, lease_until=NULL, owner=NULL
+      WHERE id=? AND attempts < max_retries""";
+    Connection con = TransactionContext.get();
+    try (var stmt = con.prepareStatement(sql)) {
+      stmt.setString(1, id);
+      try (ResultSet rs = stmt.executeQuery()) {
+        return rs.next();
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to increment attempt for WorkRequest " + id, e);
+    }
   }
 }

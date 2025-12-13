@@ -5,8 +5,9 @@ import org.anthills.commons.WorkRequest;
 import java.util.Optional;
 
 public interface WorkRequestService {
-  WorkRequest<?> create(WorkRequest<?> wr);
-  WorkRequest<?> update(WorkRequest<?> wr);
+  <T> WorkRequest<T> create(T payload, int maxRetries);
+  void markSucceeded(WorkRequest<?> wr);
+  void markFailedOrRetry(WorkRequest<?> wr);
   boolean exists(String id);
-  Optional<WorkRequest<?>> findById(String id, Class<?> payloadClass);
+  <T> Optional<WorkRequest<T>> findById(String id, Class<T> payloadClass);
 }
