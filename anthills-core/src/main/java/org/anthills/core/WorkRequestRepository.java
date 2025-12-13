@@ -2,6 +2,7 @@ package org.anthills.core;
 
 import org.anthills.commons.WorkRequest;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,4 +13,5 @@ public interface WorkRequestRepository {
   <T> List<WorkRequest<T>> findAllNonTerminal(Class<T> clazz, Page page);
   boolean exists(String id);
   boolean incrementAttempt(String id);
+  boolean extendLease(String wrId, String owner, Duration leasePeriod);
 }

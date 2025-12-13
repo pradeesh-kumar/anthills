@@ -23,7 +23,7 @@ public interface WorkItemClaimer {
     Set<WorkRequest.Status> statuses,
     String owner,
     Duration leasePeriod,
-    int limit) {
+    int batchSize) {
 
     public static <T> Builder<T> builder() {
       return new Builder<>();
@@ -34,7 +34,7 @@ public interface WorkItemClaimer {
       private Set<WorkRequest.Status> statuses;
       private String owner;
       private Duration leasePeriod;
-      private int limit = 1;
+      private int batchSize = 1;
 
       public Builder<T> payloadType(Class<T> payloadType) {
         this.payloadType = payloadType;
@@ -56,14 +56,14 @@ public interface WorkItemClaimer {
         return this;
       }
 
-      public Builder<T> limit(int limit) {
-        this.limit = limit;
+      public Builder<T> batchSize(int batchSize) {
+        this.batchSize = batchSize;
         return this;
       }
 
       public ClaimRequest<T> build() {
         validate();
-        return new ClaimRequest<>(payloadType, statuses, owner, leasePeriod, limit);
+        return new ClaimRequest<>(payloadType, statuses, owner, leasePeriod, batchSize);
       }
 
       private void validate() {
@@ -71,8 +71,8 @@ public interface WorkItemClaimer {
         Objects.requireNonNull(statuses, "statuses is required");
         Objects.requireNonNull(owner, "owner is required");
         Objects.requireNonNull(leasePeriod, "leasePeriod is required");
-        if (limit <= 0) {
-          throw new IllegalArgumentException("limit must be greater than 0");
+        if (batchSize <= 0) {
+          throw new IllegalArgumentException("batchSize must be greater than 0");
         }
       }
     }
@@ -162,7 +162,7 @@ class PostgresClaimer implements WorkItemClaimer {
       }
 
       // 3. limit
-      ps.setInt(idx++, req.limit());
+      ps.setInt(idx++, req.batchSize());
 
       // 4. owner
       ps.setString(idx++, req.owner());
@@ -211,7 +211,7 @@ class MySqlClaimer implements WorkItemClaimer {
       if (req.statuses() != null && !req.statuses().isEmpty()) {
         for (var s : req.statuses()) ps.setString(idx++, s.name());
       }
-      ps.setInt(idx, req.limit());
+      ps.setInt(idx, req.batchSize());
 
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) ids.add(rs.getString(1));
@@ -273,7 +273,7 @@ class OracleClaimer implements WorkItemClaimer {
       if (req.statuses() != null && !req.statuses().isEmpty()) {
         for (var s : req.statuses()) ps.setString(idx++, s.name());
       }
-      ps.setInt(idx, req.limit());
+      ps.setInt(idx, req.batchSize());
 
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) ids.add(rs.getLong(1));
@@ -332,7 +332,7 @@ class MsSqlClaimer implements WorkItemClaimer {
     var con = TransactionContext.get();
     try (var ps = con.prepareStatement(sql)) {
       int idx = 1;
-      ps.setInt(idx++, req.limit());
+      ps.setInt(idx++, req.batchSize());
 
       // payload_class
       ps.setString(idx++, req.payloadType().getName());
@@ -385,7 +385,7 @@ class Db2Claimer implements WorkItemClaimer {
       }
 
       // candidate FETCH FIRST ? ROWS ONLY
-      ps.setInt(idx++, req.limit());
+      ps.setInt(idx++, req.batchSize());
 
       // update params
       ps.setString(idx++, req.owner());
@@ -429,7 +429,7 @@ class H2Claimer implements WorkItemClaimer {
         for (var s : req.statuses()) ps.setString(idx++, s.name());
       }
 
-      ps.setInt(idx++, req.limit());
+      ps.setInt(idx++, req.batchSize());
       ps.setString(idx++, req.owner());
       ps.setLong(idx++, req.leasePeriod().getSeconds());
 
@@ -477,7 +477,7 @@ class SqliteClaimer implements WorkItemClaimer {
       if (req.statuses() != null && !req.statuses().isEmpty()) {
         for (var s : req.statuses()) ps.setString(idx++, s.name());
       }
-      ps.setInt(idx, req.limit());
+      ps.setInt(idx, req.batchSize());
 
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) ids.add(rs.getString(1));

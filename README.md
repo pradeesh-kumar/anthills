@@ -142,6 +142,7 @@ PRs and design discussions are welcome — especially around:
 - Distributed correctness
 - Failure recovery
 - Performance optimizations
+- Test cases
 
 ---
 Built with ❤️ for engineers who enjoy distributed systems done right.

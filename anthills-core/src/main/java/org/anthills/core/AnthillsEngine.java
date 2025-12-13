@@ -63,7 +63,7 @@ public class AnthillsEngine {
   }
 
   public <T> RequestWorker<T> newRequestWorker(WorkerConfig config, Class<T> payloadType, Consumer<WorkRequest<T>> workRequestConsumer) {
-    return new RequestWorker<>(config, workItemClaimer, workRequestService, payloadType, workRequestConsumer);
+    return new RequestWorker<>(config, workItemClaimer, (DefaultWorkRequestService) workRequestService, payloadType, workRequestConsumer);
   }
 
   public WorkRequestService workRequestService() {

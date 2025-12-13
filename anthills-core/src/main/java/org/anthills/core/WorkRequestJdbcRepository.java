@@ -6,6 +6,7 @@ import org.anthills.commons.WorkRequest;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -130,6 +131,25 @@ public class WorkRequestJdbcRepository implements WorkRequestRepository {
       }
     } catch (SQLException e) {
       throw new RuntimeException("Failed to increment attempt for WorkRequest " + id, e);
+    }
+  }
+
+  @Override
+  public boolean extendLease(String wrId, String owner, Duration leasePeriod) {
+    String sql = """
+      UPDATE work_request
+      SET lease_until = now() + interval '30 seconds'
+      WHERE id = ?
+        AND owner_id = ?
+        AND status = 'InProgress';
+      """;
+    Connection con = TransactionContext.get();
+    try (var stmt = con.prepareStatement(sql)) {
+      stmt.setString(1, wrId);
+      stmt.setString(2, owner);
+      return stmt.executeUpdate() > 0;
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to increment attempt for WorkRequest " + wrId, e);
     }
   }
 }

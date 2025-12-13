@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Objects;
@@ -73,6 +74,11 @@ public class DefaultWorkRequestService implements WorkRequestService {
   @Transactional
   public <T> Optional<WorkRequest<T>> findById(String id, Class<T> payloadClass) {
     return wrRepo.findById(id, payloadClass);
+  }
+
+  @Transactional
+  public boolean extendLease(String wrId, String owner, Duration leasePeriod) {
+    return wrRepo.extendLease(wrId, owner, leasePeriod);
   }
 
   private <T> WorkRequest<T> findByIdOrFail(String id, Class<T> payloadClass) {
