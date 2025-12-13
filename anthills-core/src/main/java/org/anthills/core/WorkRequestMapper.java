@@ -20,6 +20,7 @@ public class WorkRequestMapper {
       .setStatus(WorkRequest.Status.valueOf(rs.getString("status")))
       .setDetails(rs.getString("details"))
       .setMaxRetries(rs.getInt("max_retries"))
+      .setAttempts(rs.getInt("attempts"))
       .setOwner(rs.getString("owner"))
       .setLeaseUntil(getInstantSafely(rs, "lease_until"))
       .setCreatedTs(getInstantSafely(rs, "created_ts"))

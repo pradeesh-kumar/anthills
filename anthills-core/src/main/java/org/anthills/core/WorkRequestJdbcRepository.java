@@ -6,29 +6,42 @@ import org.anthills.commons.WorkRequest;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import static org.anthills.core.utils.Utils.getInstantSafely;
 
 public class WorkRequestJdbcRepository implements WorkRequestRepository {
 
   private final Gson gson = new Gson();
 
   @Override
-  public <T> WorkRequest<T> create(WorkRequest<T> request) {
-    String sql = "INSERT INTO work_request(id, payload, status, details, createdTs) VALUES (?, ?, ?, ?, ?)";
+  public <T> WorkRequest<T> create(WorkRequest<T> wr) {
+    String sql = """
+      INSERT INTO work_request
+      (id, payload_class, payload, status, details, max_retries, attempts,
+       owner, lease_until, created_ts, updated_ts)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      """;
     Connection con = TransactionContext.get();
     try (var stmt = con.prepareStatement(sql)) {
-      stmt.setString(1, request.id());
-      stmt.setString(2, gson.toJson(request.payload()));
-      stmt.setString(3, request.status().name());
-      stmt.setString(4, request.details());
-      stmt.setTimestamp(5, new Timestamp(System.currentTimeMillis()));
+      int id = 1;
+      stmt.setString(id++, wr.id());
+      stmt.setString(id++, wr.payloadClass());
+      stmt.setString(id++, gson.toJson(wr.payload()));
+      stmt.setString(id++, wr.status().name());
+      stmt.setString(id++, wr.details());
+      stmt.setInt(id++, wr.maxRetries());
+      stmt.setInt(id++, wr.attempts());
+      stmt.setString(id++, wr.owner());
+      stmt.setTimestamp(id++, getInstantSafely(wr.leaseUntil()));
+      stmt.setTimestamp(id++, getInstantSafely(wr.createdTs()));
+      stmt.setTimestamp(id++, getInstantSafely(wr.updatedTs()));
       stmt.executeUpdate();
 
-      return (WorkRequest<T>) findById(request.id(), request.payload().getClass())
-        .orElseThrow(() -> new SQLException("Created WorkRequest not found: " + request.id()));
+      return (WorkRequest<T>) findById(wr.id(), wr.payload().getClass())
+        .orElseThrow(() -> new SQLException("Created WorkRequest not found: " + wr.id()));
     } catch (SQLException e) {
       throw new RuntimeException("Failed to create WorkRequest", e);
     }

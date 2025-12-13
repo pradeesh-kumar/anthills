@@ -16,3 +16,4 @@ Features
 - Add support for Adaptive lease period based on how long a task takes for each payload class type
 - Implement Delayed work request processing logic
 - Add delay for next retry
+- Revisit claim wr query -> pick up expired work requests also based on time threshold (Don't immediately claim expired wrs, add a time threshold)
