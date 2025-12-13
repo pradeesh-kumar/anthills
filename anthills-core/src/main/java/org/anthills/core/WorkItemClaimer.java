@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -33,7 +34,7 @@ public interface WorkItemClaimer {
       private Set<WorkRequest.Status> statuses;
       private String owner;
       private Duration leasePeriod;
-      private int limit;
+      private int limit = 1;
 
       public Builder<T> payloadType(Class<T> payloadType) {
         this.payloadType = payloadType;
@@ -61,7 +62,18 @@ public interface WorkItemClaimer {
       }
 
       public ClaimRequest<T> build() {
-        return new ClaimRequest<T>(payloadType, statuses, owner, leasePeriod, limit);
+        validate();
+        return new ClaimRequest<>(payloadType, statuses, owner, leasePeriod, limit);
+      }
+
+      private void validate() {
+        Objects.requireNonNull(payloadType, "payloadType is required");
+        Objects.requireNonNull(statuses, "statuses is required");
+        Objects.requireNonNull(owner, "owner is required");
+        Objects.requireNonNull(leasePeriod, "leasePeriod is required");
+        if (limit <= 0) {
+          throw new IllegalArgumentException("limit must be greater than 0");
+        }
       }
     }
   }

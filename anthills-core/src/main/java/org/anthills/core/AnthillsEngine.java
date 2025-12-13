@@ -3,6 +3,7 @@ package org.anthills.core;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.anthills.commons.WorkRequest;
+import org.anthills.core.contract.WorkRequestService;
 import org.anthills.core.utils.JdbcSchemaProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,17 +17,19 @@ public class AnthillsEngine {
   private static final Logger log = LoggerFactory.getLogger(AnthillsEngine.class);
 
   private final TransactionManager txManager;
-  private final LeaseRepository leaseRepository;
   private final LeaseService leaseService;
   private final WorkItemClaimer workItemClaimer;
+  private final WorkRequestService workRequestService;
 
   private AnthillsEngine(DataSource dataSource) {
     DbInfo dbInfo = DbInfo.detect(dataSource);
     JdbcSchemaProvider.initializeSchema(dataSource, dbInfo);
     this.txManager = new JdbcTransactionManager(dataSource);
-    this.leaseRepository = new LeaseJdbcRepository();
+    var leaseRepository = new LeaseJdbcRepository();
     this.leaseService = TransactionalProxy.create(new LeaseService(leaseRepository), txManager);
     this.workItemClaimer = TransactionalProxy.create(WorkItemClaimerFactory.getClaimerFor(dbInfo), txManager);
+    var wrRepository = new WorkRequestJdbcRepository();
+    this.workRequestService = TransactionalProxy.create(new DefaultWorkRequestService(wrRepository), txManager);
   }
 
   public static AnthillsEngine fromJdbcDataSource(DataSource dataSource) {
@@ -59,8 +62,12 @@ public class AnthillsEngine {
     return new LeasedScheduledWorker(config, task, leaseService);
   }
 
-  public <T> RequestWorker<T> newRequestWorker(WorkerConfig config, Consumer<WorkRequest<T>> callable) {
-    throw new IllegalStateException("not implemented");
+  public <T> RequestWorker<T> newRequestWorker(WorkerConfig config, Class<T> payloadType, Consumer<WorkRequest<T>> workRequestConsumer) {
+    return new RequestWorker<>(config, workItemClaimer, payloadType, workRequestConsumer);
+  }
+
+  public WorkRequestService workRequestService() {
+    return workRequestService;
   }
 
   public void awaitTermination() {

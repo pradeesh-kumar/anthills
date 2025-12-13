@@ -5,7 +5,6 @@ import org.anthills.commons.WorkRequest;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -13,23 +12,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.anthills.core.utils.Utils.getInstantSafely;
-
 public class WorkRequestJdbcRepository implements WorkRequestRepository {
 
-  private final DataSource dataSource;
-  private final Gson gson;
-
-  WorkRequestJdbcRepository(DataSource dataSource) {
-    this.dataSource = dataSource;
-    this.gson = new Gson();
-  }
+  private final Gson gson = new Gson();
 
   @Override
   public <T> WorkRequest<T> create(WorkRequest<T> request) {
     String sql = "INSERT INTO work_request(id, payload, status, details, createdTs) VALUES (?, ?, ?, ?, ?)";
     Connection con = TransactionContext.get();
-    try (PreparedStatement stmt = con.prepareStatement(sql)) {
+    try (var stmt = con.prepareStatement(sql)) {
       stmt.setString(1, request.id());
       stmt.setString(2, gson.toJson(request.payload()));
       stmt.setString(3, request.status().name());
@@ -48,7 +39,7 @@ public class WorkRequestJdbcRepository implements WorkRequestRepository {
   public <T> WorkRequest<T> update(WorkRequest<T> request) {
     String sql = "UPDATE work_request SET payload=?, status=?, details=?, updatedTs=? WHERE id=?";
     Connection con = TransactionContext.get();
-    try (PreparedStatement stmt = con.prepareStatement(sql)) {
+    try (var stmt = con.prepareStatement(sql)) {
       stmt.setString(1, gson.toJson(request.payload()));
       stmt.setString(2, request.status().name());
       stmt.setString(3, request.details());
@@ -67,7 +58,7 @@ public class WorkRequestJdbcRepository implements WorkRequestRepository {
   public <T> void updateStatus(WorkRequest<T> request, WorkRequest.Status status) {
     String sql = "UPDATE work_request SET status=? WHERE id=?";
     Connection con = TransactionContext.get();
-    try (PreparedStatement stmt = con.prepareStatement(sql)) {
+    try (var stmt = con.prepareStatement(sql)) {
       stmt.setString(1, status.name());
       stmt.setString(2, request.id());
       stmt.executeUpdate();
@@ -79,23 +70,12 @@ public class WorkRequestJdbcRepository implements WorkRequestRepository {
   @Override
   public <T> Optional<WorkRequest<T>> findById(String id, Class<T> payloadClass) {
     String sql = "SELECT * FROM work_request WHERE id=?";
-    try (Connection con = dataSource.getConnection();
-         PreparedStatement stmt = con.prepareStatement(sql)) {
-
+    Connection con = TransactionContext.get();
+    try (var stmt = con.prepareStatement(sql)) {
       stmt.setString(1, id);
       try (ResultSet rs = stmt.executeQuery()) {
         if (rs.next()) {
-          WorkRequest<T> wr = WorkRequest.<T>builder()
-            .setId(rs.getString("id"))
-            .setDetails(rs.getString("details"))
-            .setStatus(WorkRequest.Status.valueOf(rs.getString("status")))
-            .setCreatedTs(getInstantSafely(rs, "createdTs"))
-            .setCompletedTs(getInstantSafely(rs, "completedTs"))
-            .setStartedTs(getInstantSafely(rs, "startedTs"))
-            .setUpdatedTs(getInstantSafely(rs, "updatedTs"))
-            .setPayload(gson.fromJson(rs.getString("payload"), payloadClass))
-            .build();
-          return Optional.of(wr);
+          return Optional.of(WorkRequestMapper.map(rs, payloadClass));
         }
       }
     } catch (SQLException e) {
@@ -109,9 +89,8 @@ public class WorkRequestJdbcRepository implements WorkRequestRepository {
     String sql = "SELECT * FROM work_request WHERE status NOT IN ('COMPLETED', 'CANCELLED', 'FAILED') " +
       "ORDER BY createdTs LIMIT ? OFFSET ?";
     List<WorkRequest<T>> results = new ArrayList<>();
-    try (Connection con = dataSource.getConnection();
-         PreparedStatement stmt = con.prepareStatement(sql)) {
-
+    Connection con = TransactionContext.get();
+    try (var stmt = con.prepareStatement(sql)) {
       stmt.setInt(1, page.limit());
       stmt.setInt(2, page.offset());
       try (ResultSet rs = stmt.executeQuery()) {

@@ -13,3 +13,4 @@ Features
 - Fix schema for those which doesn't support 'IF NOT EXISTS'
 - Feature: Enable custom lease key provider so that clients can provide their own lease key
 - Revisit indices in Workrequest table
+- Add support for Adaptive lease period based on how long a task takes for each payload class type

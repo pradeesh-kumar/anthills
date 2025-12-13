@@ -41,7 +41,7 @@ public record WorkRequest<T>(
       return isTerminal;
     }
 
-    public Set<Status> nonTerminalStatuses() {
+    public static Set<Status> nonTerminalStatuses() {
       EnumSet<Status> statuses = EnumSet.noneOf(Status.class);
       for (Status status : Status.values()) {
         if (!status.isTerminal()) {
@@ -127,7 +127,8 @@ public record WorkRequest<T>(
     }
 
     public WorkRequest<T> build() {
-      return new WorkRequest<T>(id, payloadClass, payload, status, details, maxRetries, owner, leaseUntil, createdTs, updatedTs, startedTs, completedTs);
+      // TODO add validator
+      return new WorkRequest<>(id, payloadClass, payload, status, details, maxRetries, owner, leaseUntil, createdTs, updatedTs, startedTs, completedTs);
     }
   }
 }

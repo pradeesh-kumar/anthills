@@ -13,7 +13,7 @@ public non-sealed class LeasedScheduledWorker extends ScheduledWorker {
 
   private final LeaseService leaseService;
   private final Duration leasePeriod;
-  private final Watch watch;
+  private final Watch leaseRenewalWatch;
   private final String leaseObject;
   private final Lock leaseMonitorLock = new ReentrantLock();
 
@@ -22,7 +22,7 @@ public non-sealed class LeasedScheduledWorker extends ScheduledWorker {
     this.leaseObject = config.jobName();
     this.leaseService = leaseService;
     this.leasePeriod = config.period().plusMillis(100);
-    this.watch = new Watch(identity(), this::monitorAndExtendLease, config.period());
+    this.leaseRenewalWatch = new Watch(identity(), this::monitorAndExtendLease, config.period());
   }
 
   @Override
@@ -38,13 +38,13 @@ public non-sealed class LeasedScheduledWorker extends ScheduledWorker {
         log.info("Entity {} Could not acquire lease on object {}", identity(), leaseObject);
         return;
       }
-      watch.start();
+      leaseRenewalWatch.start();
       super.runTask();
     } catch (Exception e) {
       log.error("[{}] Error running LeasedScheduledWorker task", identity(), e);
       this.stop();
     } finally {
-      watch.stop();
+      leaseRenewalWatch.stop();
       if (leaseAcquired) {
         leaseService.release(identity(), leaseObject);
       }
@@ -57,18 +57,18 @@ public non-sealed class LeasedScheduledWorker extends ScheduledWorker {
     }
     try {
       if (!running.get()) {
-        watch.stop();
+        leaseRenewalWatch.stop();
         return;
       }
       if (!leaseService.extend(identity(), leaseObject, leasePeriod)) {
         log.warn("Entity {} could not extend lease on object {}", identity(), leaseObject);
-        watch.stop();
+        leaseRenewalWatch.stop();
         super.interruptCurrentTask();
       }
     } catch (Exception e) {
       log.error("[{}] Failed to extend lease", identity(), e);
       if (!doesLeaseStillExists()) {
-        watch.stop();
+        leaseRenewalWatch.stop();
         super.interruptCurrentTask();
       }
     } finally {

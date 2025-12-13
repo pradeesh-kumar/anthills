@@ -19,13 +19,12 @@ public sealed class ScheduledWorker implements Worker permits LeasedScheduledWor
 
   protected final SchedulerConfig config;
   protected final Runnable task;
+  private ScheduledExecutorService executor;
   protected final AtomicBoolean started = new AtomicBoolean(false);
   protected final AtomicBoolean stopped = new AtomicBoolean(false);
   protected final AtomicBoolean running = new AtomicBoolean(false);
   private final AtomicReference<Thread> taskThread = new AtomicReference<>();
-
-  private final String identity;
-  private ScheduledExecutorService executor;
+  private final String identity = UUID.randomUUID().toString();
 
   ScheduledWorker(SchedulerConfig config, Runnable task) {
     Objects.requireNonNull(config);
@@ -37,7 +36,6 @@ public sealed class ScheduledWorker implements Worker permits LeasedScheduledWor
     }
     this.config = config;
     this.task = task;
-    this.identity = UUID.randomUUID().toString();
   }
 
   protected void runTask() {
@@ -68,7 +66,7 @@ public sealed class ScheduledWorker implements Worker permits LeasedScheduledWor
     }
     Objects.requireNonNull(task, "Task cannot be null!");
     this.executor = Executors.newScheduledThreadPool(1);
-    this.executor.scheduleAtFixedRate(this::runTask, config.initialDelay().getSeconds(), config.period().getSeconds(), TimeUnit.SECONDS);
+    this.executor.scheduleAtFixedRate(this::runTask, config.initialDelay().toMillis(), config.period().toMillis(), TimeUnit.MILLISECONDS);
   }
 
   @PreDestroy
