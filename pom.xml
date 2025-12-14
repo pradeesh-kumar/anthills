@@ -35,10 +35,11 @@
   </issueManagement>
 
   <modules>
-    <module>anthills-commons</module>
     <module>anthills-api</module>
     <module>anthills-core</module>
     <module>anthills-ui</module>
+    <module>anthills-jdbc</module>
+    <module>anthills-examples</module>
   </modules>
 
   <properties>
