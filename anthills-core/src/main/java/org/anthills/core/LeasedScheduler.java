@@ -7,9 +7,9 @@ import java.time.Duration;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public non-sealed class LeasedScheduledWorker extends ScheduledWorker {
+public non-sealed class LeasedScheduler extends ScheduledWorker {
 
-  private static final Logger log = LoggerFactory.getLogger(LeasedScheduledWorker.class);
+  private static final Logger log = LoggerFactory.getLogger(LeasedScheduler.class);
 
   private final LeaseService leaseService;
   private final Duration leasePeriod;
@@ -17,7 +17,7 @@ public non-sealed class LeasedScheduledWorker extends ScheduledWorker {
   private final String leaseObject;
   private final Lock leaseMonitorLock = new ReentrantLock();
 
-  LeasedScheduledWorker(SchedulerConfig config, Runnable task, LeaseService leaseService) {
+  LeasedScheduler(SchedulerConfig config, Runnable task, LeaseService leaseService) {
     super(config, task);
     this.leaseObject = config.jobName();
     this.leaseService = leaseService;
@@ -41,7 +41,7 @@ public non-sealed class LeasedScheduledWorker extends ScheduledWorker {
       leaseRenewalWatch.start();
       super.runTask();
     } catch (Exception e) {
-      log.error("[{}] Error running LeasedScheduledWorker task", identity(), e);
+      log.error("[{}] Error running Leased Scheduler task", identity(), e);
       this.stop();
     } finally {
       leaseRenewalWatch.stop();

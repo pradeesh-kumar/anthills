@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-public sealed class ScheduledWorker implements Worker permits LeasedScheduledWorker {
+public sealed class ScheduledWorker implements Worker permits LeasedScheduler {
 
   private static final Logger log =  LoggerFactory.getLogger(ScheduledWorker.class);
 

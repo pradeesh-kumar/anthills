@@ -3,7 +3,7 @@ package org.anthills.core;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-public class LeasedScheduledWorkerTest {
+public class LeasedSchedulerTest {
 
   @BeforeAll
   public static void startH2Console() {
@@ -11,14 +11,14 @@ public class LeasedScheduledWorkerTest {
   }
 
   @Test
-  public void testLeasedScheduledWorker() {
+  public void testLeasedScheduler() {
     AnthillsEngine engine = AnthillsEngine.fromJdbcSettings(JdbcSettings.builder()
       .jdbcUrl("jdbc:h2:mem:anthills_test;DB_CLOSE_DELAY=-1")
       .username("sa")
       .password("")
       .build());
 
-    LeasedScheduledWorker leasedScheduledWorker = engine.newLeasedScheduledWorker(SchedulerConfig.defaultConfig("hello"), () -> {
+    LeasedScheduler leasedScheduler = engine.newLeasedScheduler(SchedulerConfig.defaultConfig("hello"), () -> {
       task("Hello World", 100);
     });
 
@@ -28,14 +28,14 @@ public class LeasedScheduledWorkerTest {
       .password("")
       .build());
 
-    LeasedScheduledWorker leasedScheduledWorker2 = engine2.newLeasedScheduledWorker(SchedulerConfig.defaultConfig("hello"), () -> {
+    LeasedScheduler leasedScheduler2 = engine2.newLeasedScheduler(SchedulerConfig.defaultConfig("hello"), () -> {
       task("Bye World", 100);
     });
-    leasedScheduledWorker.start();
-    leasedScheduledWorker2.start();
+    leasedScheduler.start();
+    leasedScheduler2.start();
 
-    leasedScheduledWorker.awaitTermination();
-    leasedScheduledWorker2.awaitTermination();
+    leasedScheduler.awaitTermination();
+    leasedScheduler2.awaitTermination();
   }
 
   public void task(String msg, int sleepMillis) {

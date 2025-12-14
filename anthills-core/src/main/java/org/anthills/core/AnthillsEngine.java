@@ -54,12 +54,8 @@ public class AnthillsEngine {
     return fromJdbcDataSource(new HikariDataSource(hikariConfig));
   }
 
-  public ScheduledWorker newScheduledWorker(SchedulerConfig config, Runnable task) {
-    return new ScheduledWorker(config, task);
-  }
-
-  public LeasedScheduledWorker newLeasedScheduledWorker(SchedulerConfig config, Runnable task) {
-    return new LeasedScheduledWorker(config, task, leaseService);
+  public LeasedScheduler newLeasedScheduler(SchedulerConfig config, Runnable task) {
+    return new LeasedScheduler(config, task, leaseService);
   }
 
   public <T> RequestWorker<T> newRequestWorker(WorkerConfig config, Class<T> payloadType, Consumer<WorkRequest<T>> workRequestConsumer) {
