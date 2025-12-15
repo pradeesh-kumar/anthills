@@ -1,6 +1,5 @@
-package org.anthills.core.utils;
+package org.anthills.jdbc;
 
-import org.anthills.core.DbInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.anthills.core.utils.Utils.getInstantSafely;
+import static org.anthills.core.util.Utils.getInstantSafely;
 
 public class WorkRequestJdbcRepository implements WorkRequestRepository {
 

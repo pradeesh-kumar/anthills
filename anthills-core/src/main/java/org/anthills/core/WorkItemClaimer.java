@@ -12,7 +12,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.anthills.core.utils.Utils.isEmpty;
+import static org.anthills.core.util.Utils.isEmpty;
 
 public interface WorkItemClaimer {
 

@@ -1,12 +1,11 @@
 package org.anthills.api;
 
-import java.time.Instant;
-
 public record SubmissionOptions(
-  Instant availableAfter,
+  String workType,
   int maxAttempts
 ) {
-  public static SubmissionOptions defaults() {
-    return new SubmissionOptions(null, 5);
+
+  public static SubmissionOptions defaults(String workType) {
+    return new SubmissionOptions(workType, 3);
   }
 }

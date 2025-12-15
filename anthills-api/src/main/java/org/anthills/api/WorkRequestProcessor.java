@@ -1,4 +1,5 @@
 package org.anthills.api;
 
-public interface WorkRequestProcessor<T> extends Worker {
+public interface WorkRequestProcessor extends Worker {
+  <T> void registerHandler(String workType, Class<T> payloadType, WorkHandler<T> handler);
 }

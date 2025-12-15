@@ -7,9 +7,9 @@ import java.time.Duration;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public non-sealed class LeasedScheduler extends ScheduledWorker {
+public non-sealed class LeasedSchedulerOld extends ScheduledWorker {
 
-  private static final Logger log = LoggerFactory.getLogger(LeasedScheduler.class);
+  private static final Logger log = LoggerFactory.getLogger(LeasedSchedulerOld.class);
 
   private final LeaseService leaseService;
   private final Duration leasePeriod;
@@ -17,7 +17,7 @@ public non-sealed class LeasedScheduler extends ScheduledWorker {
   private final String leaseObject;
   private final Lock leaseMonitorLock = new ReentrantLock();
 
-  LeasedScheduler(SchedulerConfig config, Runnable task, LeaseService leaseService) {
+  LeasedSchedulerOld(SchedulerConfig config, Runnable task, LeaseService leaseService) {
     super(config, task);
     this.leaseObject = config.jobName();
     this.leaseService = leaseService;

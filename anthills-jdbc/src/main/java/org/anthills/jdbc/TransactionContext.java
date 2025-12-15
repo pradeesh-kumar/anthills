@@ -1,4 +1,4 @@
-package org.anthills.core;
+package org.anthills.jdbc;
 
 import java.sql.Connection;
 

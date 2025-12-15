@@ -1,7 +1,5 @@
 package org.anthills.core.contract;
 
-import org.anthills.commons.WorkRequest;
-
 import java.util.Optional;
 
 public interface WorkRequestService {

@@ -1,11 +1,11 @@
-package org.anthills.core;
+package org.anthills.jdbc;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Locale;
 
-import static org.anthills.core.utils.Utils.isBlank;
+import static org.anthills.core.util.Utils.isBlank;
 
 public record JdbcSettings(
   String jdbcUrl,

@@ -1,4 +1,4 @@
-package org.anthills.core.utils;
+package org.anthills.core.util;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
