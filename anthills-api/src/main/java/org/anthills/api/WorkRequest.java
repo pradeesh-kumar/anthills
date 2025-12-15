@@ -6,39 +6,32 @@ import java.util.Set;
 
 public record WorkRequest<T>(
   String id,
-  String payloadClass,
+
+  // Routing
+  String workType,
+
+  // Payload
   T payload,
+  int payloadVersion,
+  String codec,
+
+  // Execution
   WorkRequest.Status status,
-  String details,
-  int maxRetries,
-  int attempts,
-  String owner,
+  // total allowed executions. null -> use processor default value. non-null -> min(request.maxRetries, processor.maxAllowedRetries)
+  Integer maxRetries,
+  int attemptCount, // number of executions so far
+  String ownerId,
   Instant leaseUntil,
+
+  // Short human-readable error; may include truncated stack trace
+  String failureReason, // optional, stack trace
+
+  // Timestamps
   Instant createdTs,
   Instant updatedTs,
   Instant startedTs,
   Instant completedTs
 ) {
-  public static <T> WorkRequest.Builder<T> builder() {
-    return new WorkRequest.Builder<>();
-  }
-
-  public WorkRequest.Builder<T> toBuilder() {
-    return new WorkRequest.Builder<T>()
-      .setId(this.id)
-      .setPayloadClass(this.payloadClass)
-      .setPayload(this.payload)
-      .setStatus(this.status)
-      .setDetails(this.details)
-      .setMaxRetries(this.maxRetries)
-      .setAttempts(this.attempts)
-      .setOwner(this.owner)
-      .setLeaseUntil(this.leaseUntil)
-      .setCreatedTs(this.createdTs)
-      .setUpdatedTs(this.updatedTs)
-      .setStartedTs(this.startedTs)
-      .setCompletedTs(this.completedTs);
-  }
 
   public enum Status {
     NEW(false),
@@ -69,88 +62,104 @@ public record WorkRequest<T>(
     }
   }
 
+  public static <T> WorkRequest.Builder<T> builder() {
+    return new WorkRequest.Builder<>();
+  }
+
   public static class Builder<T> {
     private String id;
-    private String payloadClass;
+    private String workType;
     private T payload;
+    private int payloadVersion;
+    private String codec;
     private WorkRequest.Status status;
-    private String details;
-    private int maxRetries;
-    private int attempts;
-    private String owner;
+    private Integer maxRetries;
+    private int attemptCount; // number of executions so far
+    private String ownerId;
     private Instant leaseUntil;
+    private String failureReason;
     private Instant createdTs;
     private Instant updatedTs;
     private Instant startedTs;
     private Instant completedTs;
 
-    public WorkRequest.Builder<T> setId(String id) {
+    public Builder<T> id(String id) {
       this.id = id;
       return this;
     }
 
-    public WorkRequest.Builder<T> setPayload(T payload) {
+    public Builder<T> workType(String workType) {
+      this.workType = workType;
+      return this;
+    }
+
+    public Builder<T> payload(T payload) {
       this.payload = payload;
       return this;
     }
 
-    public WorkRequest.Builder<T> setStatus(WorkRequest.Status status) {
+    public Builder<T> payloadVersion(int payloadVersion) {
+      this.payloadVersion = payloadVersion;
+      return this;
+    }
+
+    public Builder<T> codec(String codec) {
+      this.codec = codec;
+      return this;
+    }
+
+    public Builder<T> status(WorkRequest.Status status) {
       this.status = status;
       return this;
     }
 
-    public WorkRequest.Builder<T> setDetails(String details) {
-      this.details = details;
-      return this;
-    }
-
-    public WorkRequest.Builder<T> setCreatedTs(Instant createdTs) {
-      this.createdTs = createdTs;
-      return this;
-    }
-
-    public WorkRequest.Builder<T> setUpdatedTs(Instant updatedTs) {
-      this.updatedTs = updatedTs;
-      return this;
-    }
-
-    public WorkRequest.Builder<T> setStartedTs(Instant startedTs) {
-      this.startedTs = startedTs;
-      return this;
-    }
-
-    public WorkRequest.Builder<T> setCompletedTs(Instant completedTs) {
-      this.completedTs = completedTs;
-      return this;
-    }
-
-    public WorkRequest.Builder<T> setMaxRetries(int maxRetries) {
+    public Builder<T> maxRetries(Integer maxRetries) {
       this.maxRetries = maxRetries;
       return this;
     }
 
-    public WorkRequest.Builder<T> setAttempts(int attempts) {
-      this.attempts = attempts;
+    public Builder<T> attemptCount(int attemptCount) {
+      this.attemptCount = attemptCount;
       return this;
     }
 
-    public WorkRequest.Builder<T> setOwner(String owner) {
-      this.owner = owner;
+    public Builder<T> ownerId(String ownerId) {
+      this.ownerId = ownerId;
       return this;
     }
 
-    public WorkRequest.Builder<T> setLeaseUntil(Instant leaseUntil) {
+    public Builder<T> leaseUntil(Instant leaseUntil) {
       this.leaseUntil = leaseUntil;
       return this;
     }
 
-    public WorkRequest.Builder<T> setPayloadClass(String payloadClass) {
-      this.payloadClass = payloadClass;
+    public Builder<T> failureReason(String failureReason) {
+      this.failureReason = failureReason;
+      return this;
+    }
+
+    public Builder<T> createdTs(Instant createdTs) {
+      this.createdTs = createdTs;
+      return this;
+    }
+
+    public Builder<T> updatedTs(Instant updatedTs) {
+      this.updatedTs = updatedTs;
+      return this;
+    }
+
+    public Builder<T> startedTs(Instant startedTs) {
+      this.startedTs = startedTs;
+      return this;
+    }
+
+    public Builder<T> completedTs(Instant completedTs) {
+      this.completedTs = completedTs;
       return this;
     }
 
     public WorkRequest<T> build() {
-      return new WorkRequest<>(id, payloadClass, payload, status, details, maxRetries, attempts, owner, leaseUntil, createdTs, updatedTs, startedTs, completedTs);
+      return new WorkRequest<>(id, workType, payload, payloadVersion, codec, status, maxRetries, attemptCount, ownerId, leaseUntil, failureReason, createdTs, updatedTs, startedTs, completedTs);
     }
   }
 }

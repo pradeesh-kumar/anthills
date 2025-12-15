@@ -5,46 +5,45 @@ import java.util.List;
 
 public interface WorkStore {
 
-    // ---- RequestWorker operations ----
+  // ---- RequestWorker operations ----
+  <T> List<WorkRequest<T>> claimWork(
+    String workerId,
+    int batchSize,
+    Duration leaseDuration,
+    Class<T> payloadType
+  );
 
-    <T> List<WorkRequest<T>> claimWork(
-            String workerId,
-            int batchSize,
-            Duration leaseDuration,
-            Class<T> payloadType
-    );
+  boolean renewLease(
+    String workRequestId,
+    String workerId,
+    Duration leaseDuration
+  );
 
-    boolean renewLease(
-            String workRequestId,
-            String workerId,
-            Duration leaseDuration
-    );
+  void markSucceeded(String workRequestId, String workerId);
 
-    void markSucceeded(String workRequestId, String workerId);
+  void markFailed(
+    String workRequestId,
+    String workerId,
+    Throwable error
+  );
 
-    void markFailed(
-            String workRequestId,
-            String workerId,
-            Throwable error
-    );
+  String submit(Object payload, SubmissionOptions options);
 
-    String submit(Object payload, SubmissionOptions options);
+  // ---- Scheduler operations ----
+  boolean tryAcquireSchedule(
+    String jobName,
+    String workerId,
+    Duration leaseDuration
+  );
 
-    // ---- Scheduler operations ----
-    boolean tryAcquireSchedule(
-            String jobName,
-            String workerId,
-            Duration leaseDuration
-    );
+  void renewScheduleLease(
+    String jobName,
+    String workerId,
+    Duration leaseDuration
+  );
 
-    void renewScheduleLease(
-            String jobName,
-            String workerId,
-            Duration leaseDuration
-    );
-
-    void releaseSchedule(
-            String jobName,
-            String workerId
-    );
+  void releaseSchedule(
+    String jobName,
+    String workerId
+  );
 }

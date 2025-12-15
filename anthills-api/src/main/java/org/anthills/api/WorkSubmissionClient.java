@@ -1,14 +1,6 @@
 package org.anthills.api;
 
-public interface WorkSubmissionClient<T> {
-
-  static <T> WorkSubmissionClient<T> create(
-    Class<T> payloadType,
-    WorkStore workStore
-  ) {
-    return new DefaultWorkSubmissionClient<>(payloadType, workStore);
-  }
-
-  String submit(T payload);
-  String submit(T payload, SubmissionOptions options);
+public interface WorkSubmissionClient {
+  <T> WorkRequest<T> submit(T payload);
+  <T> WorkRequest<T> submit(T payload, SubmissionOptions options);
 }

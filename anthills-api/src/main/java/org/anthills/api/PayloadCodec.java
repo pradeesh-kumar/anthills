@@ -1,6 +1,7 @@
 package org.anthills.api;
 
 public interface PayloadCodec {
-    <T> byte[] encode(T payload);
-    <T> T decode(byte[] data, Class<T> type);
+  String name();
+  <T> byte[] encode(T payload, int version);
+  <T> T decode(byte[] data, Class<T> type, int version);
 }

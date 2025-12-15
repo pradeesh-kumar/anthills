@@ -1,5 +1,7 @@
 package org.anthills.core;
 
+import org.anthills.api.WorkStore;
+
 public final class LeasedSchedulers {
 
   private LeasedSchedulers() {}

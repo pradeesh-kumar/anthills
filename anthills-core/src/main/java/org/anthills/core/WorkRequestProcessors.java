@@ -2,7 +2,7 @@ package org.anthills.core;
 
 import org.anthills.api.WorkRequestHandler;
 import org.anthills.api.WorkRequestProcessor;
-import org.anthills.api.config.WorkProcessorConfig;
+import org.anthills.api.WorkProcessorConfig;
 import org.anthills.api.WorkStore;
 
 public final class WorkRequestProcessors {

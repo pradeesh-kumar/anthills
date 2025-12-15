@@ -1,5 +1,7 @@
 package org.anthills.api;
 
-public interface LeasedScheduler {
-  JobHandle schedule(String jobName, Schedule schedule, ScheduledJob job);
+public interface LeasedScheduler extends AutoCloseable {
+  void start();
+  void stop();
+  void awaitTermination() throws InterruptedException;
 }
