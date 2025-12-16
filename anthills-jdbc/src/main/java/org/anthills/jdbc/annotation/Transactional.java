@@ -1,4 +1,4 @@
-package org.anthills.core.annotation;
+package org.anthills.jdbc.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

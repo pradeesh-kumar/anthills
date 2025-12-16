@@ -113,6 +113,11 @@ public record WorkRequest<T>(
       return this;
     }
 
+    public Builder<T> status(String status) {
+      this.status = WorkRequest.Status.valueOf(status);
+      return this;
+    }
+
     public Builder<T> maxRetries(Integer maxRetries) {
       this.maxRetries = maxRetries;
       return this;

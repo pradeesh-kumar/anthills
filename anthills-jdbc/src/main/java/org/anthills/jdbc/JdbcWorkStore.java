@@ -2,13 +2,22 @@ package org.anthills.jdbc;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.anthills.api.CodecException;
 import org.anthills.api.PayloadCodec;
 import org.anthills.api.WorkQuery;
 import org.anthills.api.WorkRequest;
 import org.anthills.api.WorkStore;
+import org.anthills.jdbc.util.IdGenerator;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -55,67 +64,330 @@ public final class JdbcWorkStore implements WorkStore {
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T> WorkRequest<T> createWork(String workType, byte[] payload, int payloadVersion, String codec, Integer maxRetries) {
-    return null;
+    String id = IdGenerator.generateRandomId();
+    Instant now = now();
+
+    String sql = """
+        INSERT INTO work_request (
+            id, work_type, payload, payload_version, codec,
+            status, attempt_count, max_retries,
+            created_ts, updated_ts
+        )
+        VALUES (?, ?, ?, ?, ?, 'NEW', 0, ?, ?, ?)
+        """;
+
+    try (Connection c = getConnection();
+         PreparedStatement ps = c.prepareStatement(sql)) {
+      ps.setString(1, id);
+      ps.setString(2, workType);
+      ps.setBytes(3, payload);
+      ps.setInt(4, payloadVersion);
+      ps.setString(5, codec);
+      ps.setObject(6, maxRetries);
+      ps.setTimestamp(7, Timestamp.from(now));
+      ps.setTimestamp(8, Timestamp.from(now));
+      ps.executeUpdate();
+      c.commit();
+      return (WorkRequest<T>) getWork(id).orElseThrow();
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to create work", e);
+    }
   }
 
   @Override
   public Optional<WorkRequest<?>> getWork(String workId) {
-    return Optional.empty();
+    String sql = "SELECT * FROM work_request WHERE id = ?";
+
+    try (Connection c = dataSource.getConnection();
+         PreparedStatement ps = c.prepareStatement(sql)) {
+      ps.setString(1, workId);
+      ResultSet rs = ps.executeQuery();
+      if (!rs.next()) return Optional.empty();
+      return Optional.of(mapRow(rs));
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
   }
+
 
   @Override
   public List<WorkRequest<?>> listWork(WorkQuery query) {
-    return List.of();
-  }
-
-  @Override
-  public <T> List<WorkRequest<T>> claimWork(String workerId, int batchSize, Duration leaseDuration, Class<T> payloadType) {
-    return List.of();
+    throw new UnsupportedOperationException("listWork");
   }
 
   @Override
   public List<WorkRequest<?>> claimWork(String workType, String ownerId, int limit, Duration leaseDuration) {
-    return List.of();
+    Instant now = now();
+    Instant leaseUntil = now.plus(leaseDuration);
+
+    String selectSql = """
+        SELECT id FROM work_request
+        WHERE work_type = ?
+          AND status = 'NEW'
+          AND (lease_until IS NULL OR lease_until < ?)
+        ORDER BY created_ts
+        LIMIT ?
+        FOR UPDATE SKIP LOCKED
+        """;
+
+    String updateSql = """
+        UPDATE work_request
+        SET status = 'IN_PROGRESS',
+            owner_id = ?,
+            lease_until = ?,
+            attempt_count = attempt_count + 1,
+            started_ts = COALESCE(started_ts, ?),
+            updated_ts = ?
+        WHERE id = ?
+        """;
+
+    List<WorkRequest<?>> claimed = new ArrayList<>();
+
+    try (Connection c = getConnection();
+         PreparedStatement select = c.prepareStatement(selectSql);
+         PreparedStatement update = c.prepareStatement(updateSql)) {
+
+      select.setString(1, workType);
+      select.setTimestamp(2, Timestamp.from(now));
+      select.setInt(3, limit);
+
+      ResultSet rs = select.executeQuery();
+
+      while (rs.next()) {
+        String id = rs.getString(1);
+
+        update.setString(1, ownerId);
+        update.setTimestamp(2, Timestamp.from(leaseUntil));
+        update.setTimestamp(3, Timestamp.from(now));
+        update.setTimestamp(4, Timestamp.from(now));
+        update.setString(5, id);
+
+        update.executeUpdate();
+        claimed.add(getWork(id).orElseThrow());
+      }
+
+      c.commit();
+      return claimed;
+
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to claim work", e);
+    }
   }
+
 
   @Override
   public boolean renewLease(String workId, String ownerId, Duration leaseDuration) {
-    return false;
+    String sql = """
+        UPDATE work_request
+        SET lease_until = ?, updated_ts = ?
+        WHERE id = ?
+          AND owner_id = ?
+          AND status = 'IN_PROGRESS'
+        """;
+
+    Instant now = now();
+
+    try (Connection c = getConnection();
+         PreparedStatement ps = c.prepareStatement(sql)) {
+
+      ps.setTimestamp(1, Timestamp.from(now.plus(leaseDuration)));
+      ps.setTimestamp(2, Timestamp.from(now));
+      ps.setString(3, workId);
+      ps.setString(4, ownerId);
+
+      int updated = ps.executeUpdate();
+      c.commit();
+      return updated == 1;
+
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
   public void markSucceeded(String workId, String ownerId) {
-
+    updateTerminal(workId, ownerId, WorkRequest.Status.SUCCEEDED, null);
   }
 
   @Override
-  public void markFailed(String workId, String ownerId, String failureReason) {
+  public void markFailed(String workId, String ownerId, String reason) {
+    updateTerminal(workId, ownerId, WorkRequest.Status.FAILED, reason);
+  }
 
+  private void updateTerminal(String id, String ownerId, WorkRequest.Status status, String reason) {
+    String sql = """
+        UPDATE work_request
+        SET status = ?, failure_reason = ?, lease_until = NULL,
+            completed_ts = ?, updated_ts = ?
+        WHERE id = ? AND owner_id = ?
+        """;
+
+    Instant now = now();
+
+    try (Connection c = getConnection();
+         PreparedStatement ps = c.prepareStatement(sql)) {
+
+      ps.setString(1, status.name());
+      ps.setString(2, reason);
+      ps.setTimestamp(3, Timestamp.from(now));
+      ps.setTimestamp(4, Timestamp.from(now));
+      ps.setString(5, id);
+      ps.setString(6, ownerId);
+
+      ps.executeUpdate();
+      c.commit();
+
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
-  public void markCancelled(String workId) {
-
-  }
-
-  @Override
-  public void markFailed(String workRequestId, String workerId, Throwable error) {
-
+  public void markCancelled(String id) {
+    String sql = """
+        UPDATE work_request
+        SET status = ?, lease_until = NULL,
+            completed_ts = ?, updated_ts = ?
+        WHERE id = ?
+        """;
+    Instant now = now();
+    try (Connection c = getConnection();
+         PreparedStatement ps = c.prepareStatement(sql)) {
+      ps.setString(1, WorkRequest.Status.CANCELLED.name());
+      ps.setTimestamp(2, Timestamp.from(now));
+      ps.setTimestamp(3, Timestamp.from(now));
+      ps.setString(4, id);
+      ps.executeUpdate();
+      c.commit();
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
   public boolean tryAcquireSchedulerLease(String jobName, String ownerId, Duration leaseDuration) {
-    return false;
+    Instant now = now();
+    String sql = """
+        INSERT INTO scheduler_lease (job_name, owner_id, lease_until)
+        VALUES (?, ?, ?)
+        ON CONFLICT (job_name)
+        DO UPDATE SET owner_id = ?, lease_until = ?
+        WHERE scheduler_lease.lease_until < ?
+        """;
+
+    try (Connection c = getConnection();
+         PreparedStatement ps = c.prepareStatement(sql)) {
+
+      ps.setString(1, jobName);
+      ps.setString(2, ownerId);
+      ps.setTimestamp(3, Timestamp.from(now.plus(leaseDuration)));
+      ps.setString(4, ownerId);
+      ps.setTimestamp(5, Timestamp.from(now.plus(leaseDuration)));
+      ps.setTimestamp(6, Timestamp.from(now));
+
+      int updated = ps.executeUpdate();
+      c.commit();
+      return updated == 1;
+
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
   public boolean renewSchedulerLease(String jobName, String ownerId, Duration leaseDuration) {
-    return false;
+    String sql = """
+      UPDATE scheduler_lease
+      SET lease_until = ?
+      WHERE job_name = ? AND owner_id = ?
+      """;
+
+    try (Connection c = getConnection();
+         PreparedStatement ps = c.prepareStatement(sql)) {
+
+      ps.setTimestamp(1, Timestamp.from(now().plus(leaseDuration)));
+      ps.setString(2, jobName);
+      ps.setString(3, ownerId);
+
+      int updated = ps.executeUpdate();
+      c.commit();
+      return updated == 1;
+
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
   public void releaseSchedulerLease(String jobName, String ownerId) {
+    String sql = """
+        DELETE FROM scheduler_lease
+        WHERE job_name = ? AND owner_id = ?
+        """;
 
+    try (Connection c = getConnection();
+         PreparedStatement ps = c.prepareStatement(sql)) {
+
+      ps.setString(1, jobName);
+      ps.setString(2, ownerId);
+      ps.executeUpdate();
+      c.commit();
+
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private Connection getConnection() throws SQLException {
+    Connection c = dataSource.getConnection();
+    c.setAutoCommit(false);
+    return c;
+  }
+
+  private Instant now() {
+    return Instant.now();
+  }
+
+  private WorkRequest<?> mapRow(ResultSet rs) throws SQLException {
+    int payloadVersion = rs.getInt("payload_version");
+    String payloadCodec = rs.getString("codec");
+    byte[] payloadBytes = rs.getBytes("payload");
+    String id = rs.getString("id");
+
+    Object payload;
+    try {
+      payload = codec.decode(payloadBytes, Object.class, payloadVersion);
+    } catch (Exception e) {
+      throw new CodecException("Failed to decode payload for work id " + rs.getString("id") + " using codec " + payloadCodec, e);
+    }
+
+    return WorkRequest.builder()
+      .id(id)
+      .workType(rs.getString("work_type"))
+
+      .payloadVersion(payloadVersion)
+      .codec(payloadCodec)
+      .payload(payload)
+
+      .status(rs.getString("status"))
+      .attemptCount(rs.getInt("attempt_count"))
+      .maxRetries(rs.getInt("max_retries"))
+      .ownerId(rs.getString("owner_id"))
+      .leaseUntil(getInstantSafely(rs, "lease_until"))
+
+      .failureReason(rs.getString("failure_reason"))
+
+      .createdTs(getInstantSafely(rs, "created_ts"))
+      .updatedTs(getInstantSafely(rs, "updated_ts"))
+      .startedTs(getInstantSafely(rs, "started_ts"))
+      .completedTs(getInstantSafely(rs, "completed_ts"))
+      .build();
+  }
+
+  private static Instant getInstantSafely(ResultSet rs, String column) throws SQLException {
+    Timestamp ts = rs.getTimestamp(column);
+    return ts != null ? ts.toInstant() : null;
   }
 }

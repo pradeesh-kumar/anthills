@@ -2,20 +2,47 @@ package org.anthills.api;
 
 import com.cronutils.model.CronType;
 import com.cronutils.model.definition.CronDefinitionBuilder;
+import com.cronutils.model.time.ExecutionTime;
 import com.cronutils.parser.CronParser;
 
 import java.time.Duration;
+import java.time.ZonedDateTime;
+import java.util.Objects;
 
 public sealed interface Schedule permits Schedule.FixedRate, Schedule.Cron {
 
-  record FixedRate(Duration interval) implements Schedule {}
+  /**
+   * Returns the delay until the next execution.
+   * Must always return a positive duration.
+   */
+  Duration nextDelay();
+
+  record FixedRate(Duration interval) implements Schedule {
+    @Override
+    public Duration nextDelay() {
+      return interval;
+    }
+  }
 
   record Cron(String expression) implements Schedule {
 
-    private static final CronParser parser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ));
+    private static final CronParser PARSER = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ));
 
     public Cron {
-      parser.parse(expression);
+      Objects.requireNonNull(expression, "expression");
+      PARSER.parse(expression);
+    }
+
+    @Override
+    public Duration nextDelay() {
+      var cron = PARSER.parse(expression);
+      ExecutionTime executionTime = ExecutionTime.forCron(cron);
+
+      ZonedDateTime now = ZonedDateTime.now();
+      return executionTime
+        .timeToNextExecution(now)
+        .map(Duration::from)
+        .orElseThrow(() -> new IllegalStateException("Cannot compute next execution for cron: " + expression));
     }
   }
 }

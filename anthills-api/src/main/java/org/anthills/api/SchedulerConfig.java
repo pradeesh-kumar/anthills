@@ -4,7 +4,7 @@ import java.time.Duration;
 
 public record SchedulerConfig(
   Duration leaseDuration,
-  Duration leaseRenewalInterval,
+  Duration leaseRenewInterval,
   Duration shutdownTimeout
 ) {
   public static SchedulerConfig defaultConfig() {

@@ -1,8 +1,13 @@
 package org.anthills.jdbc;
 
+import com.google.gson.Gson;
 import org.anthills.api.PayloadCodec;
 
+import java.nio.charset.StandardCharsets;
+
 public class JsonPayloadCodec implements PayloadCodec {
+
+  private final Gson gson = new Gson();
 
   public static JsonPayloadCodec defaultInstance() {
     return new JsonPayloadCodec();
@@ -15,15 +20,11 @@ public class JsonPayloadCodec implements PayloadCodec {
 
   @Override
   public <T> byte[] encode(T payload, int version) {
-    return new byte[0];
+    return gson.toJson(payload, payload.getClass()).getBytes(StandardCharsets.UTF_8);
   }
 
   @Override
   public <T> T decode(byte[] data, Class<T> type, int version) {
-    switch (version) {
-      case 1 -> ...
-      default -> throw new UnsupportedVersionException(version);
-    }
-    return null;
+    return gson.fromJson(new String(data, StandardCharsets.UTF_8), type);
   }
 }
