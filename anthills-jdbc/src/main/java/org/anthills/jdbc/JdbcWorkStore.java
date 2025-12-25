@@ -2,7 +2,6 @@ package org.anthills.jdbc;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import org.anthills.api.CodecException;
 import org.anthills.api.PayloadCodec;
 import org.anthills.api.WorkQuery;
 import org.anthills.api.WorkRecord;
@@ -89,7 +88,7 @@ public final class JdbcWorkStore implements WorkStore {
       ps.setTimestamp(8, Timestamp.from(now));
       ps.executeUpdate();
       c.commit();
-      return (WorkRequest<T>) getWork(id).orElseThrow();
+      return getWork(id).orElseThrow();
     } catch (SQLException e) {
       throw new RuntimeException("Failed to create work", e);
     }
@@ -112,7 +111,77 @@ public final class JdbcWorkStore implements WorkStore {
 
   @Override
   public List<WorkRecord> listWork(WorkQuery query) {
-    throw new UnsupportedOperationException("listWork");
+    Objects.requireNonNull(query, "query is required");
+
+    // If explicitly provided an empty status set, return no results
+    if (query.statuses() != null && query.statuses().isEmpty()) {
+      return List.of();
+    }
+
+    StringBuilder sql = new StringBuilder("SELECT * FROM work_request WHERE 1=1");
+    List<Object> params = new ArrayList<>();
+
+    if (query.workType() != null) {
+      sql.append(" AND work_type = ?");
+      params.add(query.workType());
+    }
+
+    if (query.statuses() != null) {
+      sql.append(" AND status IN (");
+      int i = 0;
+      for (WorkRequest.Status s : query.statuses()) {
+        if (i++ > 0) sql.append(", ");
+        sql.append("?");
+        params.add(s.name());
+      }
+      sql.append(")");
+    }
+
+    if (query.createdAfter() != null) {
+      sql.append(" AND created_ts > ?");
+      params.add(Timestamp.from(query.createdAfter()));
+    }
+
+    if (query.createdBefore() != null) {
+      sql.append(" AND created_ts < ?");
+      params.add(Timestamp.from(query.createdBefore()));
+    }
+
+    sql.append(" ORDER BY created_ts DESC");
+
+    int limit = query.page() != null ? query.page().limit() : 10;
+    int offset = query.page() != null ? query.page().offset() : 0;
+
+    sql.append(" LIMIT ? OFFSET ?");
+    params.add(limit);
+    params.add(offset);
+
+    try (Connection c = dataSource.getConnection();
+         PreparedStatement ps = c.prepareStatement(sql.toString())) {
+
+      int idx = 1;
+      for (Object p : params) {
+        if (p instanceof Timestamp ts) {
+          ps.setTimestamp(idx++, ts);
+        } else if (p instanceof Integer i) {
+          ps.setInt(idx++, i);
+        } else if (p instanceof String s) {
+          ps.setString(idx++, s);
+        } else {
+          ps.setObject(idx++, p);
+        }
+      }
+
+      ResultSet rs = ps.executeQuery();
+      List<WorkRecord> results = new ArrayList<>();
+      while (rs.next()) {
+        results.add(mapRow(rs));
+      }
+      return results;
+
+    } catch (SQLException e) {
+      throw new RuntimeException("Failed to list work", e);
+    }
   }
 
   @Override
@@ -141,7 +210,7 @@ public final class JdbcWorkStore implements WorkStore {
         WHERE id = ?
         """;
 
-    List<WorkRequest<?>> claimed = new ArrayList<>();
+    List<WorkRecord> claimed = new ArrayList<>();
 
     try (Connection c = getConnection();
          PreparedStatement select = c.prepareStatement(selectSql);
@@ -354,22 +423,17 @@ public final class JdbcWorkStore implements WorkStore {
   }
 
   private WorkRecord mapRow(ResultSet rs) throws SQLException {
-    int payloadVersion = rs.getInt("payload_version");
-    String payloadCodec = rs.getString("codec");
-    byte[] payloadBytes = rs.getBytes("payload");
-    String id = rs.getString("id");
-
-    return WorkRequest.builder()
-      .id(id)
+    return WorkRecord.builder()
+      .id(rs.getString("id"))
       .workType(rs.getString("work_type"))
 
-      .payloadVersion(payloadVersion)
-      .codec(payloadCodec)
-      .payload(payload)
+      .payload(rs.getBytes("payload"))
+      .payloadVersion(rs.getInt("payload_version"))
+      .codec(rs.getString("codec"))
 
       .status(rs.getString("status"))
+      .maxRetries(rs.getObject("max_retries", Integer.class))
       .attemptCount(rs.getInt("attempt_count"))
-      .maxRetries(rs.getInt("max_retries"))
       .ownerId(rs.getString("owner_id"))
       .leaseUntil(getInstantSafely(rs, "lease_until"))
 

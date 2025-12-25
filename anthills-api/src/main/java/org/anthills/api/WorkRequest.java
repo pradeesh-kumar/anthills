@@ -66,7 +66,7 @@ public record WorkRequest<T>(
     return new WorkRequest.Builder<>();
   }
 
-  public static class Builder<T> {
+  public static final class Builder<T> {
     private String id;
     private String workType;
     private T payload;
