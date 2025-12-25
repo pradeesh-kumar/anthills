@@ -1,4 +1,4 @@
-package org.anthills.core.work.processor;
+package org.anthills.core.work;
 
 import org.anthills.api.PayloadCodec;
 import org.anthills.api.WorkHandler;
@@ -115,32 +115,37 @@ public class DefaultWorkRequestProcessor implements WorkRequestProcessor {
 
   @SuppressWarnings("unchecked")
   private <T> void process(WorkRecord record) {
-    WorkHandler<T> handler = null;
-    Class<T> payloadType = null;
-
-    for (var entry : handlers.entrySet()) {
-      if (entry.getKey().getName().equals(record.codec())) {
-        payloadType = (Class<T>) entry.getKey();
-        handler = (WorkHandler<T>) entry.getValue();
-        break;
-      }
-    }
-    if (handler == null) {
-      store.markFailed(record.id(), ownerId, "No handler registered");
+    if (!codec.name().equalsIgnoreCase(record.codec())) {
+      store.markFailed(record.id(), ownerId, "Payload with codec " + record.codec() + " is not supported by the processor.");
       return;
     }
-    WorkRequest<T> request = record.toWorkRequest(payloadType, codec);
+    WorkRequest<Object> workRequest = record.toWorkRequest(Object.class, codec);
+    WorkHandler<T> handler = findHandler(workRequest);
+    if (handler == null) {
+      store.markFailed(record.id(), ownerId, "No handler registered registered for payload type");
+      return;
+    }
     try {
-      handler.handle(request);
+      handler.handle((WorkRequest<T>) workRequest);
       store.markSucceeded(record.id(), ownerId);
     } catch (Exception e) {
       handleFailure(record, e);
     }
   }
 
+  @SuppressWarnings("unchecked")
+  private <T> WorkHandler<T> findHandler(WorkRequest<?> request) {
+    for (var entry : handlers.entrySet()) {
+      if (entry.getKey().isAssignableFrom(request.payload().getClass())) {
+        return (WorkHandler<T>) entry.getValue();
+      }
+    }
+    return null;
+  }
+
   private void handleFailure(WorkRecord record, Exception error) {
     int attempts = record.attemptCount();
-    int maxRetries = record.maxRetries();
+    int maxRetries = effectiveMaxRetries(record);
     if (attempts >= maxRetries) {
       store.markFailed(record.id(), ownerId, error.getMessage());
       return;
@@ -161,15 +166,8 @@ public class DefaultWorkRequestProcessor implements WorkRequestProcessor {
     Objects.requireNonNull(payloadType);
 
     if (!this.workType.equalsIgnoreCase(workType)) {
-      throw new IllegalArgumentException("Processor handles workType=" + this.workType);
+      throw new IllegalArgumentException("This processor handles only workType=" + this.workType);
     }
     handlers.put(payloadType, handler);
-  }
-
-  record HandlerRegistration<T>(
-    String workType,
-    Class<T> payloadType,
-    WorkHandler<T> handler
-  ) {
   }
 }

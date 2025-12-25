@@ -4,7 +4,7 @@ import org.anthills.api.PayloadCodec;
 import org.anthills.api.ProcessorConfig;
 import org.anthills.api.WorkRequestProcessor;
 import org.anthills.api.WorkStore;
-import org.anthills.core.work.processor.DefaultWorkRequestProcessor;
+import org.anthills.core.work.DefaultWorkRequestProcessor;
 
 public final class WorkRequestProcessors {
 

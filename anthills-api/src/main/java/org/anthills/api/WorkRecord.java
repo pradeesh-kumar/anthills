@@ -10,6 +10,7 @@ public record WorkRecord(
 
   // Payload
   byte[] payload,
+  String payloadType,
   int payloadVersion,
   String codec,
 

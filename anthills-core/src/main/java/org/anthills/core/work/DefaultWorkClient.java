@@ -1,4 +1,4 @@
-package org.anthills.core.work.client;
+package org.anthills.core.work;
 
 import org.anthills.api.PayloadCodec;
 import org.anthills.api.SubmissionOptions;

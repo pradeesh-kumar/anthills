@@ -3,7 +3,7 @@ package org.anthills.core.factory;
 import org.anthills.api.PayloadCodec;
 import org.anthills.api.WorkClient;
 import org.anthills.api.WorkStore;
-import org.anthills.core.work.client.DefaultWorkClient;
+import org.anthills.core.work.DefaultWorkClient;
 
 public final class WorkClients {
 

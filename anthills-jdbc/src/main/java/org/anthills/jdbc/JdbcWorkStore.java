@@ -5,6 +5,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import org.anthills.api.CodecException;
 import org.anthills.api.PayloadCodec;
 import org.anthills.api.WorkQuery;
+import org.anthills.api.WorkRecord;
 import org.anthills.api.WorkRequest;
 import org.anthills.api.WorkStore;
 import org.anthills.jdbc.util.IdGenerator;
@@ -25,13 +26,11 @@ import java.util.Optional;
 public final class JdbcWorkStore implements WorkStore {
 
   private final DataSource dataSource;
-  private final PayloadCodec codec;
 
   private JdbcWorkStore(DataSource dataSource, PayloadCodec codec) {
     DbInfo dbInfo = DbInfo.detect(dataSource);
     JdbcSchemaProvider.initializeSchema(dataSource, dbInfo);
     this.dataSource = dataSource;
-    this.codec = codec;
   }
 
   public static JdbcWorkStore create(DataSource dataSource) {
@@ -65,7 +64,7 @@ public final class JdbcWorkStore implements WorkStore {
 
   @Override
   @SuppressWarnings("unchecked")
-  public <T> WorkRequest<T> createWork(String workType, byte[] payload, int payloadVersion, String codec, Integer maxRetries) {
+  public WorkRecord createWork(String workType, byte[] payload, int payloadVersion, String codec, Integer maxRetries) {
     String id = IdGenerator.generateRandomId();
     Instant now = now();
 
@@ -97,7 +96,7 @@ public final class JdbcWorkStore implements WorkStore {
   }
 
   @Override
-  public Optional<WorkRequest<?>> getWork(String workId) {
+  public Optional<WorkRecord> getWork(String workId) {
     String sql = "SELECT * FROM work_request WHERE id = ?";
 
     try (Connection c = dataSource.getConnection();
@@ -112,12 +111,12 @@ public final class JdbcWorkStore implements WorkStore {
   }
 
   @Override
-  public List<WorkRequest<?>> listWork(WorkQuery query) {
+  public List<WorkRecord> listWork(WorkQuery query) {
     throw new UnsupportedOperationException("listWork");
   }
 
   @Override
-  public List<WorkRequest<?>> claimWork(String workType, String ownerId, int limit, Duration leaseDuration) {
+  public List<WorkRecord> claimWork(String workType, String ownerId, int limit, Duration leaseDuration) {
     Instant now = now();
     Instant leaseUntil = now.plus(leaseDuration);
 
@@ -203,6 +202,11 @@ public final class JdbcWorkStore implements WorkStore {
     } catch (SQLException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Override
+  public void reschedule(String id, Duration delay) {
+
   }
 
   @Override
@@ -349,18 +353,11 @@ public final class JdbcWorkStore implements WorkStore {
     return Instant.now();
   }
 
-  private WorkRequest<?> mapRow(ResultSet rs) throws SQLException {
+  private WorkRecord mapRow(ResultSet rs) throws SQLException {
     int payloadVersion = rs.getInt("payload_version");
     String payloadCodec = rs.getString("codec");
     byte[] payloadBytes = rs.getBytes("payload");
     String id = rs.getString("id");
-
-    Object payload;
-    try {
-      payload = codec.decode(payloadBytes, Object.class, payloadVersion);
-    } catch (Exception e) {
-      throw new CodecException("Failed to decode payload for work id " + rs.getString("id") + " using codec " + payloadCodec, e);
-    }
 
     return WorkRequest.builder()
       .id(id)
