@@ -31,18 +31,56 @@ public record WorkRecord(
   Instant startedTs,
   Instant completedTs) {
 
+  public WorkRequest<?> toWorkRequest(PayloadCodec codec) {
+    Object decoded;
+    try {
+      Class<?> actualPayloadType = Class.forName(this.payloadType);
+      decoded = codec.decode(this.payload(), actualPayloadType, this.payloadVersion);
+    } catch (ClassNotFoundException e) {
+      throw new IllegalStateException("Failed to deserialize WorkRequest " + this.id + " Class not found " + this.payloadType);
+    } catch (IllegalArgumentException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new IllegalStateException("Failed to decode payload for workId=" + this.id, e);
+    }
+
+    return new WorkRequest<>(
+      id(),
+      workType(),
+      decoded,
+      payloadVersion(),
+      this.codec(),
+      status(),
+      attemptCount(),
+      maxRetries(),
+      ownerId(),
+      leaseUntil(),
+      failureReason(),
+      createdTs(),
+      updatedTs(),
+      startedTs(),
+      completedTs()
+    );
+  }
+
+  @SuppressWarnings("unchecked")
   public <T> WorkRequest<T> toWorkRequest(
-    Class<T> payloadType,
-    PayloadCodec codec
+    PayloadCodec codec,
+    Class<T> expectedPayloadType
   ) {
     T decoded;
     try {
-      decoded = codec.decode(this.payload(), payloadType, this.payloadVersion);
+      Class<?> actualPayloadType = Class.forName(this.payloadType);
+      if (!actualPayloadType.isAssignableFrom(expectedPayloadType)) {
+        throw new IllegalArgumentException("Cannot deserialize WorkRequest " + this.id + " to " + expectedPayloadType.getName() + ". Actual Type " + this.payloadType);
+      }
+      decoded = (T) codec.decode(this.payload(), actualPayloadType, this.payloadVersion);
+    } catch (ClassNotFoundException e) {
+      throw new IllegalStateException("Failed to deserialize WorkRequest " + this.id + " Class not found " + this.payloadType);
+    } catch (IllegalArgumentException e) {
+      throw e;
     } catch (Exception e) {
-      throw new IllegalStateException(
-        "Failed to decode payload for workId=" + id(),
-        e
-      );
+      throw new IllegalStateException("Failed to decode payload for workId=" + this.id, e);
     }
 
     return new WorkRequest<>(

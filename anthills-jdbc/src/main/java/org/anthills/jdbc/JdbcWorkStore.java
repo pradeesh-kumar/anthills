@@ -2,7 +2,6 @@ package org.anthills.jdbc;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import org.anthills.api.PayloadCodec;
 import org.anthills.api.WorkQuery;
 import org.anthills.api.WorkRecord;
 import org.anthills.api.WorkRequest;
@@ -26,25 +25,17 @@ public final class JdbcWorkStore implements WorkStore {
 
   private final DataSource dataSource;
 
-  private JdbcWorkStore(DataSource dataSource, PayloadCodec codec) {
+  private JdbcWorkStore(DataSource dataSource) {
     DbInfo dbInfo = DbInfo.detect(dataSource);
     JdbcSchemaProvider.initializeSchema(dataSource, dbInfo);
     this.dataSource = dataSource;
   }
 
   public static JdbcWorkStore create(DataSource dataSource) {
-    return new JdbcWorkStore(dataSource, JsonPayloadCodec.defaultInstance());
-  }
-
-  public static JdbcWorkStore create(DataSource dataSource, PayloadCodec codec) {
-    return new JdbcWorkStore(dataSource, codec);
+    return new JdbcWorkStore(dataSource);
   }
 
   public static JdbcWorkStore create(JdbcSettings jdbcSettings) {
-    return create(jdbcSettings, null);
-  }
-
-  public static JdbcWorkStore create(JdbcSettings jdbcSettings, PayloadCodec codec) {
     Objects.requireNonNull(jdbcSettings, "jdbcSettings must not be null");
     HikariConfig hikariConfig = new HikariConfig();
     hikariConfig.setJdbcUrl(jdbcSettings.jdbcUrl());
@@ -58,11 +49,10 @@ public final class JdbcWorkStore implements WorkStore {
     hikariConfig.addDataSourceProperty("prepStmtCacheSize", "10");
     hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
     hikariConfig.addDataSourceProperty("useServerPrepStmts", "true");
-    return create(new HikariDataSource(hikariConfig), codec);
+    return create(new HikariDataSource(hikariConfig));
   }
 
   @Override
-  @SuppressWarnings("unchecked")
   public WorkRecord createWork(String workType, byte[] payload, int payloadVersion, String codec, Integer maxRetries) {
     String id = IdGenerator.generateRandomId();
     Instant now = now();

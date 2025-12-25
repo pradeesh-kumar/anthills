@@ -35,7 +35,7 @@ public class DefaultWorkRequestProcessor implements WorkRequestProcessor {
   private final ExecutorService workerPool;
   private final ScheduledExecutorService poller;
 
-  private final Map<Class<?>, WorkHandler<?>> handlers = new ConcurrentHashMap<>();
+  private final Map<String, WorkHandler<?>> handlers = new ConcurrentHashMap<>();
 
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final String ownerId = UUID.randomUUID().toString();
@@ -114,33 +114,23 @@ public class DefaultWorkRequestProcessor implements WorkRequestProcessor {
   }
 
   @SuppressWarnings("unchecked")
-  private <T> void process(WorkRecord record) {
+  private void process(WorkRecord record) {
     if (!codec.name().equalsIgnoreCase(record.codec())) {
       store.markFailed(record.id(), ownerId, "Payload with codec " + record.codec() + " is not supported by the processor.");
       return;
     }
-    WorkRequest<Object> workRequest = record.toWorkRequest(Object.class, codec);
-    WorkHandler<T> handler = findHandler(workRequest);
+    WorkRequest<Object> workRequest = record.toWorkRequest(codec, Object.class);
+    WorkHandler<Object> handler = (WorkHandler<Object>) handlers.get(record.payloadType());
     if (handler == null) {
       store.markFailed(record.id(), ownerId, "No handler registered registered for payload type");
       return;
     }
     try {
-      handler.handle((WorkRequest<T>) workRequest);
+      handler.handle(workRequest);
       store.markSucceeded(record.id(), ownerId);
     } catch (Exception e) {
       handleFailure(record, e);
     }
-  }
-
-  @SuppressWarnings("unchecked")
-  private <T> WorkHandler<T> findHandler(WorkRequest<?> request) {
-    for (var entry : handlers.entrySet()) {
-      if (entry.getKey().isAssignableFrom(request.payload().getClass())) {
-        return (WorkHandler<T>) entry.getValue();
-      }
-    }
-    return null;
   }
 
   private void handleFailure(WorkRecord record, Exception error) {
@@ -168,6 +158,6 @@ public class DefaultWorkRequestProcessor implements WorkRequestProcessor {
     if (!this.workType.equalsIgnoreCase(workType)) {
       throw new IllegalArgumentException("This processor handles only workType=" + this.workType);
     }
-    handlers.put(payloadType, handler);
+    handlers.put(payloadType.getName(), handler);
   }
 }
