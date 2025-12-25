@@ -9,10 +9,10 @@ public interface WorkStore {
   // ------------------------------------------------------------------
   // WorkRequest Operations
   // ------------------------------------------------------------------
-  <T> WorkRequest<T> createWork(String workType, byte[] payload, int payloadVersion, String codec, Integer maxRetries);
-  Optional<WorkRequest<?>> getWork(String id);
-  List<WorkRequest<?>> listWork(WorkQuery query);
-  List<WorkRequest<?>> claimWork(String workType, String ownerId, int limit, Duration leaseDuration);
+  WorkRecord createWork(String workType, byte[] payload, int payloadVersion, String codec, Integer maxRetries);
+  Optional<WorkRecord> getWork(String id);
+  List<WorkRecord> listWork(WorkQuery query);
+  List<WorkRecord> claimWork(String workType, String ownerId, int limit, Duration leaseDuration);
   boolean renewLease(String id, String ownerId, Duration leaseDuration);
   void markSucceeded(String id, String ownerId);
   void markFailed(String id, String ownerId, String failureReason);

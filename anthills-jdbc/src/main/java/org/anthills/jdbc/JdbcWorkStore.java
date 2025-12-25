@@ -111,7 +111,6 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
-
   @Override
   public List<WorkRequest<?>> listWork(WorkQuery query) {
     throw new UnsupportedOperationException("listWork");

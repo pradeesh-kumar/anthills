@@ -5,11 +5,11 @@ import org.anthills.api.SchedulerConfig;
 import org.anthills.api.WorkStore;
 import org.anthills.core.scheduler.DefaultLeasedScheduler;
 
-public final class LeasedSchedulers {
+public final class Schedulers {
 
-  private LeasedSchedulers(){}
+  private Schedulers(){}
 
-  public static LeasedScheduler create(SchedulerConfig config, WorkStore store) {
+  public static LeasedScheduler createLeasedScheduler(SchedulerConfig config, WorkStore store) {
     return new DefaultLeasedScheduler(config, store);
   }
 }

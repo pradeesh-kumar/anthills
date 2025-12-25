@@ -1,7 +1,6 @@
 package org.anthills.core;
 
 import org.anthills.api.WorkRequest;
-import org.anthills.core.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,11 +1,12 @@
 package org.anthills.api;
 
 public record SubmissionOptions(
-  String workType,
-  int maxAttempts
+  int payloadVersion,
+  String codec,
+  Integer maxAttempts
 ) {
 
-  public static SubmissionOptions defaults(String workType) {
-    return new SubmissionOptions(workType, 3);
+  public static SubmissionOptions defaults() {
+    return new SubmissionOptions(1, "json", null);
   }
 }

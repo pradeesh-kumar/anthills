@@ -34,7 +34,7 @@ public class Backoff {
     if (maxDelay.compareTo(baseDelay) < 0) {
       throw new IllegalArgumentException("maxDelay must be >= baseDelay");
     }
-    return new Backoff(Strategy.EXPONENTIAL, baseDelay, maxDelay, );
+    return new Backoff(Strategy.EXPONENTIAL, baseDelay, maxDelay, jitter);
   }
 
   /**
@@ -72,5 +72,4 @@ public class Backoff {
     long jittered = ThreadLocalRandom.current().nextLong(millis / 2, millis);
     return Duration.ofMillis(jittered);
   }
-
 }
