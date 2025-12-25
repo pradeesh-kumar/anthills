@@ -113,51 +113,12 @@ public final class JdbcWorkStore implements WorkStore {
   public List<WorkRecord> listWork(WorkQuery query) {
     Objects.requireNonNull(query, "query is required");
 
-    // If explicitly provided an empty status set, return no results
-    if (query.statuses() != null && query.statuses().isEmpty()) {
-      return List.of();
-    }
-
-    StringBuilder sql = new StringBuilder("SELECT * FROM work_request WHERE 1=1");
-    List<Object> params = new ArrayList<>();
-
-    if (query.workType() != null) {
-      sql.append(" AND work_type = ?");
-      params.add(query.workType());
-    }
-
-    if (query.statuses() != null) {
-      sql.append(" AND status IN (");
-      int i = 0;
-      for (WorkRequest.Status s : query.statuses()) {
-        if (i++ > 0) sql.append(", ");
-        sql.append("?");
-        params.add(s.name());
-      }
-      sql.append(")");
-    }
-
-    if (query.createdAfter() != null) {
-      sql.append(" AND created_ts > ?");
-      params.add(Timestamp.from(query.createdAfter()));
-    }
-
-    if (query.createdBefore() != null) {
-      sql.append(" AND created_ts < ?");
-      params.add(Timestamp.from(query.createdBefore()));
-    }
-
-    sql.append(" ORDER BY created_ts DESC");
-
-    int limit = query.page() != null ? query.page().limit() : 10;
-    int offset = query.page() != null ? query.page().offset() : 0;
-
-    sql.append(" LIMIT ? OFFSET ?");
-    params.add(limit);
-    params.add(offset);
+    ListWorkQueryBuilder b = new ListWorkQueryBuilder(query);
+    String sql = b.buildSql();
+    List<Object> params = b.params();
 
     try (Connection c = dataSource.getConnection();
-         PreparedStatement ps = c.prepareStatement(sql.toString())) {
+         PreparedStatement ps = c.prepareStatement(sql)) {
 
       int idx = 1;
       for (Object p : params) {
@@ -428,6 +389,7 @@ public final class JdbcWorkStore implements WorkStore {
       .workType(rs.getString("work_type"))
 
       .payload(rs.getBytes("payload"))
+      .payloadType(rs.getString("payload_type"))
       .payloadVersion(rs.getInt("payload_version"))
       .codec(rs.getString("codec"))
 

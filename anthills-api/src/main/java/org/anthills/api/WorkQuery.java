@@ -17,7 +17,7 @@ public record WorkQuery(
     }
   }
 
-  public static WorkQuery defaults() {
-    return new WorkQuery(null, null, null, null, Page.of(1, 0));
+  public static WorkQuery defaults(String workType) {
+    return new WorkQuery(workType, null, null, null, Page.of(1, 0));
   }
 }

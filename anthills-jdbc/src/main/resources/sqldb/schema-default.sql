@@ -5,6 +5,7 @@ CREATE TABLE work_request
     work_type       VARCHAR(100) NOT NULL,
 
     payload         BLOB         NOT NULL,
+    payload_type    VARCHAR(500) NOT NULL,
     payload_version INT          NOT NULL,
     codec           VARCHAR(50)  NOT NULL,
 
