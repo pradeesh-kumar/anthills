@@ -1,6 +1,5 @@
 Features
 ------------
-- Add worker count for scheduledWorker
 - Add micronaut support
 - Add spring boot support
 - Add workrequest and lease records GC support
@@ -9,11 +8,5 @@ Features
 - Fix schema for those which doesn't support 'IF NOT EXISTS'
 - Feature: Enable custom lease key provider so that clients can provide their own lease key
 - Revisit indices in Workrequest table
-- Add support for Adaptive lease period based on how long a task takes for each payload class type
-- Implement Delayed work request processing logic
-- Add delay for next retry
 - Revisit claim wr query -> pick up expired work requests also based on time threshold (Don't immediately claim expired wrs, add a time threshold)
-- Implement adaptive poll period
 - Add pause / resume / cancel semantics
-- Update detail col in work request for failure scenarios and update it to null when succeeds.
-- Check lease expired on worker. If expired during renewal, and not owned by any other worker, that task should be interrupted.
