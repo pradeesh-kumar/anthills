@@ -5,6 +5,7 @@ import org.anthills.core.LeaseRenewer;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -22,18 +23,25 @@ public final class LeaseBoundExecutor {
     this.renewScheduler = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory(threadNamePrefix + "-lease-renew", true));
   }
 
-  public Future<?> execute(Runnable task, LeaseRenewer renewer) {
-    Objects.requireNonNull(task, "task is required");
-    Objects.requireNonNull(renewer, "renewer is required");
+  public Future<?> execute(Runnable task, LeaseRenewer renewer, Executor executor) {
+    Objects.requireNonNull(task);
+    Objects.requireNonNull(renewer);
+    Objects.requireNonNull(executor);
+
     AtomicBoolean running = new AtomicBoolean(true);
-    ScheduledFuture<?> renewTask = renewScheduler.scheduleAtFixedRate(() -> {
-      if (!running.get()) {
-        return;
-      }
-      if (!renewer.renew()) {
-        running.set(false);
-      }
-    }, renewInterval.toMillis(), renewInterval.toMillis(), TimeUnit.MILLISECONDS);
+
+    ScheduledFuture<?> renewTask =
+      renewScheduler.scheduleAtFixedRate(() -> {
+        if (!running.get()) return;
+        try {
+          if (!renewer.renew()) {
+            running.set(false);
+          }
+        } catch (Exception e) {
+          // log and continue (best-effort)
+        }
+      }, renewInterval.toMillis(), renewInterval.toMillis(), TimeUnit.MILLISECONDS);
+
     return CompletableFuture.runAsync(() -> {
       try {
         task.run();
@@ -41,7 +49,7 @@ public final class LeaseBoundExecutor {
         running.set(false);
         renewTask.cancel(true);
       }
-    });
+    }, executor);
   }
 
   public void shutdown(Duration timeout) throws InterruptedException {

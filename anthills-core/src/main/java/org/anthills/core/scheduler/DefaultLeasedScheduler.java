@@ -119,8 +119,7 @@ public final class DefaultLeasedScheduler implements LeasedScheduler {
       } catch (Exception e) {
         log.error("Scheduled Job {} Failed", job.name, e);
       }
-    }, () -> store.renewSchedulerLease(job.name(), ownerId, config.leaseDuration()));
-    store.releaseSchedulerLease(job.name(), ownerId);
+    },() -> store.renewSchedulerLease(job.name(), ownerId, config.leaseDuration()), jobExecutor);
   }
 
   private void requireNotRunning() {

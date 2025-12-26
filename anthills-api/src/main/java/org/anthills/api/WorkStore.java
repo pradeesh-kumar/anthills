@@ -13,7 +13,7 @@ public interface WorkStore {
   Optional<WorkRecord> getWork(String id);
   List<WorkRecord> listWork(WorkQuery query);
   List<WorkRecord> claimWork(String workType, String ownerId, int limit, Duration leaseDuration);
-  boolean renewLease(String id, String ownerId, Duration leaseDuration);
+  boolean renewWorkerLease(String id, String ownerId, Duration leaseDuration);
   void reschedule(String id, Duration delay);
   void markSucceeded(String id, String ownerId);
   void markFailed(String id, String ownerId, String failureReason);

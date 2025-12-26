@@ -1,6 +1,7 @@
-package org.anthills.core;
+package org.anthills.jdbc;
 
-import org.anthills.commons.WorkRequest;
+import org.anthills.api.WorkRecord;
+import org.anthills.api.WorkRequest;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -12,62 +13,60 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.anthills.core.util.Utils.isEmpty;
-
 public interface WorkItemClaimer {
 
-  <T> List<WorkRequest<T>> claim(ClaimRequest<T> request);
+  List<WorkRecord> claim(ClaimRequest request);
 
-  record ClaimRequest<T>(
-    Class<T> payloadType,
+  record ClaimRequest(
+    String workType,
     Set<WorkRequest.Status> statuses,
     String owner,
     Duration leasePeriod,
     int batchSize) {
 
-    public static <T> Builder<T> builder() {
-      return new Builder<>();
+    public static Builder builder() {
+      return new Builder();
     }
 
-    public static class Builder<T> {
-      private Class<T> payloadType;
+    public static class Builder {
+      private String workType;
       private Set<WorkRequest.Status> statuses;
       private String owner;
       private Duration leasePeriod;
       private int batchSize = 1;
 
-      public Builder<T> payloadType(Class<T> payloadType) {
-        this.payloadType = payloadType;
+      public Builder withWorkType(String workType) {
+        this.workType = workType;
         return this;
       }
 
-      public Builder<T> statuses(Set<WorkRequest.Status> statuses) {
+      public Builder statuses(Set<WorkRequest.Status> statuses) {
         this.statuses = statuses;
         return this;
       }
 
-      public Builder<T> owner(String owner) {
+      public Builder owner(String owner) {
         this.owner = owner;
         return this;
       }
 
-      public Builder<T> leasePeriod(Duration leasePeriod) {
+      public Builder leasePeriod(Duration leasePeriod) {
         this.leasePeriod = leasePeriod;
         return this;
       }
 
-      public Builder<T> batchSize(int batchSize) {
+      public Builder batchSize(int batchSize) {
         this.batchSize = batchSize;
         return this;
       }
 
-      public ClaimRequest<T> build() {
+      public ClaimRequest build() {
         validate();
-        return new ClaimRequest<>(payloadType, statuses, owner, leasePeriod, batchSize);
+        return new ClaimRequest(workType, statuses, owner, leasePeriod, batchSize);
       }
 
       private void validate() {
-        Objects.requireNonNull(payloadType, "payloadType is required");
+        Objects.requireNonNull(workType, "payloadType is required");
         Objects.requireNonNull(statuses, "statuses is required");
         Objects.requireNonNull(owner, "owner is required");
         Objects.requireNonNull(leasePeriod, "leasePeriod is required");
@@ -96,10 +95,10 @@ class WorkItemClaimerFactory {
 
 class ClaimQuerySupport {
 
-  public static String buildWhereClause(WorkItemClaimer.ClaimRequest<?> req, String nowExpression) {
+  public static String buildWhereClause(WorkItemClaimer.ClaimRequest req, String nowExpression) {
     StringBuilder sb = new StringBuilder();
     sb.append(" WHERE payload_class=? ");
-    if (isEmpty(req.statuses())) {
+    if (req.statuses() != null && !req.statuses().isEmpty()) {
       sb.append(" AND status IN (");
       String joined = req.statuses().stream().map(s -> "?").collect(Collectors.joining(", "));
       sb.append(joined);
@@ -108,18 +107,16 @@ class ClaimQuerySupport {
     return sb.toString();
   }
 
-  public static <T> List<WorkRequest<T>> retrieveResults(PreparedStatement ps, WorkItemClaimer.ClaimRequest<T> req) throws SQLException {
+  public static List<WorkRecord> retrieveResults(PreparedStatement ps, WorkItemClaimer.ClaimRequest req) throws SQLException {
     try (var rs = ps.executeQuery()) {
       return retrieveResults(rs, req);
     }
   }
 
-  public static <T> List<WorkRequest<T>> retrieveResults(ResultSet rs, WorkItemClaimer.ClaimRequest<T> req) throws SQLException {
-    List<WorkRequest<T>> results = new ArrayList<>();
+  public static List<WorkRecord> retrieveResults(ResultSet rs, WorkItemClaimer.ClaimRequest req) throws SQLException {
+    List<WorkRecord> results = new ArrayList<>();
     while (rs.next()) {
-      results.add(
-        WorkRequestMapper.map(rs, req.payloadType())
-      );
+      results.add(WorkRecordRowMapper.map(rs));
     }
     return results;
   }
@@ -128,7 +125,7 @@ class ClaimQuerySupport {
 class PostgresClaimer implements WorkItemClaimer {
 
   @Override
-  public <T> List<WorkRequest<T>> claim(ClaimRequest<T> req) {
+  public List<WorkRecord> claim(ClaimRequest req) {
     String where = ClaimQuerySupport.buildWhereClause(req, "now()");
     int statusCount = req.statuses() == null ? 0 : req.statuses().size();
 
@@ -197,7 +194,7 @@ class MySqlClaimer implements WorkItemClaimer {
     """;
 
   @Override
-  public <T> List<WorkRequest<T>> claim(ClaimRequest<T> req) {
+  public List<WorkRecord> claim(ClaimRequest req) {
     String where = ClaimQuerySupport.buildWhereClause(req, "NOW()");
     String selectSql = String.format(SELECT_IDS, where);
 
@@ -255,13 +252,13 @@ class OracleClaimer implements WorkItemClaimer {
     """;
 
   private static final String RETURN_TEMPLATE = """
-    SELECT id, payload_class, payload, status, details, max_retries, owner, lease_until, created_ts, updated_ts, started_ts, completed_ts
+    SELECT *
     FROM work_request
     WHERE id IN (%s)
     """;
 
   @Override
-  public <T> List<WorkRequest<T>> claim(ClaimRequest<T> req) {
+  public List<WorkRecord> claim(ClaimRequest req) {
     String where = ClaimQuerySupport.buildWhereClause(req, "SYSTIMESTAMP");
     String selectSql = String.format(SELECT_IDS, where);
 
@@ -325,7 +322,7 @@ class MsSqlClaimer implements WorkItemClaimer {
     """;
 
   @Override
-  public <T> List<WorkRequest<T>> claim(ClaimRequest<T> req) {
+  public List<WorkRecord> claim(ClaimRequest req) {
     String where = ClaimQuerySupport.buildWhereClause(req, "SYSDATETIME()");
     String sql = String.format(SQL, where);
 
@@ -371,7 +368,7 @@ class Db2Claimer implements WorkItemClaimer {
     """;
 
   @Override
-  public <T> List<WorkRequest<T>> claim(ClaimRequest<T> req) {
+  public List<WorkRecord> claim(ClaimRequest req) {
     String where = ClaimQuerySupport.buildWhereClause(req, "CURRENT TIMESTAMP");
     String sql = String.format(SQL, where);
 
@@ -417,7 +414,7 @@ class H2Claimer implements WorkItemClaimer {
     """;
 
   @Override
-  public <T> List<WorkRequest<T>> claim(ClaimRequest<T> req) {
+  public List<WorkRecord> claim(ClaimRequest req) {
     String where = ClaimQuerySupport.buildWhereClause(req, "NOW()");
     String sql = String.format(SQL, where);
 
@@ -459,13 +456,13 @@ class SqliteClaimer implements WorkItemClaimer {
     """;
 
   private static final String RETURN_TEMPLATE = """
-    SELECT id, payload_class, payload, status, details, max_retries, owner, lease_until, created_ts, updated_ts, started_ts, completed_ts
+    SELECT *
     FROM work_request
     WHERE id IN (%s)
     """;
 
   @Override
-  public <T> List<WorkRequest<T>> claim(ClaimRequest<T> req) {
+  public List<WorkRecord> claim(ClaimRequest req) {
     String where = ClaimQuerySupport.buildWhereClause(req, "CURRENT_TIMESTAMP");
     String selectSql = String.format(SELECT_IDS, where);
 

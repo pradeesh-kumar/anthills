@@ -93,7 +93,7 @@ public final class JdbcWorkStore implements WorkStore {
       ps.setString(1, workId);
       ResultSet rs = ps.executeQuery();
       if (!rs.next()) return Optional.empty();
-      return Optional.of(mapRow(rs));
+      return Optional.of(WorkRecordRowMapper.map(rs));
     } catch (SQLException e) {
       throw new RuntimeException(e);
     }
@@ -126,7 +126,7 @@ public final class JdbcWorkStore implements WorkStore {
       ResultSet rs = ps.executeQuery();
       List<WorkRecord> results = new ArrayList<>();
       while (rs.next()) {
-        results.add(mapRow(rs));
+        results.add(WorkRecordRowMapper.map(rs));
       }
       return results;
 
@@ -371,35 +371,5 @@ public final class JdbcWorkStore implements WorkStore {
 
   private Instant now() {
     return Instant.now();
-  }
-
-  private WorkRecord mapRow(ResultSet rs) throws SQLException {
-    return WorkRecord.builder()
-      .id(rs.getString("id"))
-      .workType(rs.getString("work_type"))
-
-      .payload(rs.getBytes("payload"))
-      .payloadType(rs.getString("payload_type"))
-      .payloadVersion(rs.getInt("payload_version"))
-      .codec(rs.getString("codec"))
-
-      .status(rs.getString("status"))
-      .maxRetries(rs.getObject("max_retries", Integer.class))
-      .attemptCount(rs.getInt("attempt_count"))
-      .ownerId(rs.getString("owner_id"))
-      .leaseUntil(getInstantSafely(rs, "lease_until"))
-
-      .failureReason(rs.getString("failure_reason"))
-
-      .createdTs(getInstantSafely(rs, "created_ts"))
-      .updatedTs(getInstantSafely(rs, "updated_ts"))
-      .startedTs(getInstantSafely(rs, "started_ts"))
-      .completedTs(getInstantSafely(rs, "completed_ts"))
-      .build();
-  }
-
-  private static Instant getInstantSafely(ResultSet rs, String column) throws SQLException {
-    Timestamp ts = rs.getTimestamp(column);
-    return ts != null ? ts.toInstant() : null;
   }
 }

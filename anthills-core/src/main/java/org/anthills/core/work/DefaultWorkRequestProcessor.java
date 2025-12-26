@@ -7,6 +7,7 @@ import org.anthills.api.WorkRecord;
 import org.anthills.api.WorkRequest;
 import org.anthills.api.WorkRequestProcessor;
 import org.anthills.api.WorkStore;
+import org.anthills.core.concurrent.LeaseBoundExecutor;
 import org.anthills.core.concurrent.NamedThreadFactory;
 import org.anthills.core.util.Backoff;
 
@@ -34,6 +35,7 @@ public class DefaultWorkRequestProcessor implements WorkRequestProcessor {
 
   private final ExecutorService workerPool;
   private final ScheduledExecutorService poller;
+  private final LeaseBoundExecutor leaseExecutor;
 
   private final Map<String, WorkHandler<?>> handlers = new ConcurrentHashMap<>();
 
@@ -53,6 +55,8 @@ public class DefaultWorkRequestProcessor implements WorkRequestProcessor {
 
     this.workerPool = Executors.newFixedThreadPool(config.workerThreads(), new NamedThreadFactory("work-" + workType));
     this.poller = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("poller-" + workType));
+    this.leaseExecutor = new LeaseBoundExecutor(config.leaseRenewInterval(), "work-" + workType);
+
     this.backoff = Backoff.exponential(Duration.ofSeconds(1), Duration.ofMinutes(5), true); // TODO these params should be in config
 
     this.minPoll = config.pollInterval();
@@ -89,6 +93,10 @@ public class DefaultWorkRequestProcessor implements WorkRequestProcessor {
     running.set(false);
     poller.shutdown();
     workerPool.shutdown();
+    try {
+      leaseExecutor.shutdown(config.shutdownTimeout());
+    } catch (InterruptedException _) {
+    }
   }
 
   @Override
@@ -125,12 +133,14 @@ public class DefaultWorkRequestProcessor implements WorkRequestProcessor {
       store.markFailed(record.id(), ownerId, "No handler registered registered for payload type");
       return;
     }
-    try {
-      handler.handle(workRequest);
-      store.markSucceeded(record.id(), ownerId);
-    } catch (Exception e) {
-      handleFailure(record, e);
-    }
+    leaseExecutor.execute(() -> {
+      try {
+        handler.handle(workRequest);
+        store.markSucceeded(record.id(), ownerId);
+      } catch (Exception e) {
+        handleFailure(record, e);
+      }
+    }, () -> store.renewWorkerLease(record.id(), ownerId, config.leaseDuration()), workerPool);
   }
 
   private void handleFailure(WorkRecord record, Exception error) {

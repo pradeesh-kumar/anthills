@@ -30,6 +30,7 @@ public class DefaultWorkClient implements WorkClient {
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public <T> WorkRequest<T> submit(String workType, T payload, SubmissionOptions options) {
     Objects.requireNonNull(workType, "workType");
     Objects.requireNonNull(payload, "payload");
@@ -38,23 +39,17 @@ public class DefaultWorkClient implements WorkClient {
     try {
       encodedPayload = codec.encode(payload, options.payloadVersion());
     } catch (Exception e) {
-      throw new IllegalArgumentException(
-        "Failed to encode payload of type " +
-          payload.getClass().getName(),
-        e
-      );
+      throw new IllegalArgumentException("Failed to encode payload of type " + payload.getClass().getName(), e);
     }
     WorkRecord record = store.createWork(workType, encodedPayload, options.payloadVersion(), options.codec(), options.maxAttempts());
-    @SuppressWarnings("unchecked")
-    Class<T> payloadType = (Class<T>) payload.getClass();
-    return record.toWorkRequest(payloadType, codec);
+    return (WorkRequest<T>) record.toWorkRequest(codec);
   }
 
   @Override
   public <T> Optional<WorkRequest<T>> get(String id, Class<T> payloadType) {
     Objects.requireNonNull(id, "id is required");
     Objects.requireNonNull(payloadType, "payloadType is required");
-    return store.getWork(id).map(workRecord -> workRecord.toWorkRequest(payloadType, codec));
+    return store.getWork(id).map(workRecord -> workRecord.toWorkRequest(codec, payloadType));
   }
 
   @Override
@@ -62,7 +57,7 @@ public class DefaultWorkClient implements WorkClient {
     Objects.requireNonNull(query, "query is required");
     return store.listWork(query)
       .stream()
-      .map(record -> record.toWorkRequest(Object.class, codec))
+      .map(record -> record.toWorkRequest(codec, Object.class))
       .collect(Collectors.toCollection(ArrayList::new));
   }
 
