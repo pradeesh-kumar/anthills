@@ -7,6 +7,8 @@ import org.anthills.core.work.DefaultWorkClient;
 
 public final class WorkClients {
 
+  private WorkClients() {}
+
   public static WorkClient create(WorkStore store, PayloadCodec codec) {
     return new DefaultWorkClient(store, codec);
   }

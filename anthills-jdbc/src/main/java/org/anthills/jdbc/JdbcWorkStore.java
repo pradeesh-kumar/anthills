@@ -196,7 +196,7 @@ public final class JdbcWorkStore implements WorkStore {
 
 
   @Override
-  public boolean renewLease(String workId, String ownerId, Duration leaseDuration) {
+  public boolean renewWorkerLease(String workId, String ownerId, Duration leaseDuration) {
     String sql = """
         UPDATE work_request
         SET lease_until = ?, updated_ts = ?

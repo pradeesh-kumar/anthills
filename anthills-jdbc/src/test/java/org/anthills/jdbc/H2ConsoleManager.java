@@ -1,4 +1,4 @@
-package org.anthills.core;
+package org.anthills.jdbc;
 
 import org.h2.tools.Server;
 import org.slf4j.Logger;
