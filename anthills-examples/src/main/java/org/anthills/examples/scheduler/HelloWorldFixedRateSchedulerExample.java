@@ -19,7 +19,7 @@ public class HelloWorldFixedRateSchedulerExample {
     WorkStore store = JdbcWorkStore.create(dataSource);
 
     LeasedScheduler scheduler = Schedulers.createLeasedScheduler(SchedulerConfig.defaults(), store);
-    Schedule everyMinute = Schedule.FixedRate.of(Duration.ofSeconds(5));
+    Schedule everyMinute = Schedule.FixedRate.every(Duration.ofSeconds(5));
     scheduler.schedule("hello-world-job", everyMinute, HelloWorldFixedRateSchedulerExample::helloWorldJob);
     scheduler.start();
     Runtime.getRuntime().addShutdownHook(new Thread(scheduler::stop));

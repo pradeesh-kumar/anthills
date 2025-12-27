@@ -19,7 +19,7 @@ public sealed interface Schedule permits Schedule.FixedRate, Schedule.Cron {
 
   record FixedRate(Duration interval) implements Schedule {
 
-    public static FixedRate of(Duration interval) {
+    public static FixedRate every(Duration interval) {
       return new FixedRate(interval);
     }
 

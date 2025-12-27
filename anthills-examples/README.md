@@ -66,7 +66,7 @@ Typical use cases:
 📄 **HelloWorldCronSchedulerExample.java**
 
 ```java
-Schedule everyMinute = new Cron("* * * * *");
+Schedule everyMinute = Cron.parse("* * * * *");
 
 scheduler.schedule("hello-world-job", everyMinute, () ->System.out.println("Hello world"));
 ```
