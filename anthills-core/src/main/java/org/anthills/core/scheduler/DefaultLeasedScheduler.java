@@ -19,6 +19,20 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Default implementation of {@link LeasedScheduler} that triggers scheduled jobs and
+ * coordinates distributed execution using scheduler leases persisted in a {@link WorkStore}.
+ *
+ * Design
+ * - A single-threaded scheduler computes the next trigger per job and enqueues work.
+ * - Before executing, it tries to acquire a lease in the store so only one node runs the job.
+ * - While the job runs, a {@code LeaseBoundExecutor} keeps the lease alive.
+ * - Whether a trigger acquires a lease or not, the next trigger is always scheduled.
+ *
+ * Thread-safety
+ * - Registration must happen before {@link #start()}.
+ * - Start/stop are idempotent; internal executors coordinate lifecycle.
+ */
 public final class DefaultLeasedScheduler implements LeasedScheduler {
 
   private static final Logger log = LoggerFactory.getLogger(DefaultLeasedScheduler.class);
@@ -32,6 +46,13 @@ public final class DefaultLeasedScheduler implements LeasedScheduler {
   private final Map<String, ScheduledJob> jobs = new ConcurrentHashMap<>();
   private volatile boolean running = false;
 
+  /**
+   * Creates a scheduler with the supplied configuration and store.
+   *
+   * @param config tuning parameters controlling lease timing and shutdown behavior
+   * @param store persistence used to acquire/renew scheduler leases
+   * @throws NullPointerException if any parameter is null
+   */
   public DefaultLeasedScheduler(SchedulerConfig config, WorkStore store) {
     this.store = Objects.requireNonNull(store, "store");
     this.config = Objects.requireNonNull(config, "config");
@@ -42,6 +63,16 @@ public final class DefaultLeasedScheduler implements LeasedScheduler {
   }
 
   @Override
+  /**
+   * Registers a job to be executed according to the provided schedule.
+   * Must be invoked before {@link #start()}.
+   *
+   * @param jobName unique logical name used for the distributed lease
+   * @param schedule describes the cadence for firing the job
+   * @param job code to execute on each trigger
+   * @throws IllegalArgumentException if a job with the same name is already registered
+   * @throws NullPointerException if any parameter is null
+   */
   public void schedule(String jobName, Schedule schedule, Job job) {
     requireNotRunning();
 
@@ -54,6 +85,10 @@ public final class DefaultLeasedScheduler implements LeasedScheduler {
     }
   }
 
+  /**
+   * Starts the scheduler if not already running and schedules the first trigger for all jobs.
+   * Idempotent.
+   */
   @Override
   public void start() {
     if (running) {
@@ -63,6 +98,11 @@ public final class DefaultLeasedScheduler implements LeasedScheduler {
     jobs.values().forEach(this::scheduleNext);
   }
 
+  /**
+   * Requests a graceful stop: trigger scheduler is shut down immediately,
+   * worker executor is shut down, and the lease renewer is stopped.
+   * Idempotent.
+   */
   @Override
   public void stop() {
     running = false;
@@ -77,6 +117,10 @@ public final class DefaultLeasedScheduler implements LeasedScheduler {
     }
   }
 
+  /**
+   * Waits up to {@link SchedulerConfig#shutdownTimeout()} for worker tasks to finish.
+   * The waiting thread is restored on interruption.
+   */
   @Override
   public void awaitTermination() {
     try {
@@ -86,17 +130,29 @@ public final class DefaultLeasedScheduler implements LeasedScheduler {
     }
   }
 
+  /**
+   * Closes the scheduler by calling {@link #stop()} followed by {@link #awaitTermination()}.
+   * Safe to use with try-with-resources.
+   */
   @Override
   public void close() {
     this.stop();
     this.awaitTermination();
   }
 
+  /**
+   * Computes and schedules the next trigger for the given job.
+   * Always called after each trigger to ensure continuous scheduling.
+   */
   private void scheduleNext(ScheduledJob job) {
     Duration delay = job.schedule().nextDelay();
     triggerScheduler.schedule(() -> onTrigger(job), delay.toMillis(), TimeUnit.MILLISECONDS);
   }
 
+  /**
+   * Callback executed at trigger time. Attempts to acquire a lease and, if successful,
+   * dispatches the job execution to the worker executor.
+   */
   private void onTrigger(ScheduledJob job) {
     if (!running) {
       return;
@@ -112,6 +168,11 @@ public final class DefaultLeasedScheduler implements LeasedScheduler {
     }
   }
 
+  /**
+   * Executes the job using a {@link org.anthills.core.concurrent.LeaseBoundExecutor} so that
+   * the scheduler lease is periodically renewed while the job runs.
+   * Any exception thrown by the job is logged; the next trigger is still scheduled.
+   */
   private void runJob(ScheduledJob job) {
     leaseExecutor.execute(() -> {
       try {
@@ -122,16 +183,27 @@ public final class DefaultLeasedScheduler implements LeasedScheduler {
     },() -> store.renewSchedulerLease(job.name(), ownerId, config.leaseDuration()), jobExecutor);
   }
 
+  /**
+   * Ensures the scheduler hasn't been started yet; used to guard configuration changes.
+   *
+   * @throws IllegalStateException if the scheduler is already running
+   */
   private void requireNotRunning() {
     if (running) {
       throw new IllegalStateException("Cannot modify scheduler after start()");
     }
   }
 
+  /**
+   * Generates a unique owner id for distinguishing this scheduler instance during leasing.
+   */
   private static String generateOwnerId() {
     return java.util.UUID.randomUUID().toString();
   }
 
+  /**
+   * Immutable registration of a scheduled job.
+   */
   private record ScheduledJob(
     String name,
     Schedule schedule,

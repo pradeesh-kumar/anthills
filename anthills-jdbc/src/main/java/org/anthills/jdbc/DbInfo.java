@@ -6,8 +6,20 @@ import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.util.Objects;
 
+/**
+ * Describes a database connection target, including detected SQL dialect, version,
+ * and a stable identity string (typically the JDBC URL) used to scope one-time actions
+ * such as schema initialization.
+ *
+ * @param dialect detected vendor/dialect
+ * @param version database product version string
+ * @param identity stable identifier for the datasource (e.g., JDBC URL)
+ */
 public record DbInfo(Dialect dialect, String version, String identity) {
 
+  /**
+   * Supported database dialects used to adapt SQL and DDL.
+   */
   public enum Dialect {
     PostgresSQL,
     MySQL,
@@ -18,6 +30,14 @@ public record DbInfo(Dialect dialect, String version, String identity) {
     MSSQL
   }
 
+  /**
+   * Inspects the provided {@link DataSource} to detect the database product name,
+   * version, and identity (JDBC URL), and maps the product to a supported {@link Dialect}.
+   *
+   * @param dataSource the data source to inspect
+   * @return populated {@link DbInfo} for the given data source
+   * @throws RuntimeException if the connection metadata cannot be read
+   */
   public static DbInfo detect(DataSource dataSource) {
     try (Connection connection = dataSource.getConnection()) {
       DatabaseMetaData meta = connection.getMetaData();
@@ -31,6 +51,13 @@ public record DbInfo(Dialect dialect, String version, String identity) {
     }
   }
 
+  /**
+   * Maps a vendor product name (from JDBC metadata) to an internal {@link Dialect}.
+   *
+   * @param productName vendor product name (e.g., "PostgreSQL", "MySQL")
+   * @return detected dialect
+   * @throws UnsupportedOperationException if the product is not supported
+   */
   private static DbInfo.Dialect mapToDialect(String productName) {
     Objects.requireNonNull(productName);
     String name = productName.toLowerCase();

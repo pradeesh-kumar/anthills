@@ -16,11 +16,31 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Initializes and verifies the Anthills JDBC schema for a given {@link javax.sql.DataSource}.
+ *
+ * Responsibilities:
+ * - Detect if required tables already exist (vendor-neutral).
+ * - Load vendor-specific DDL from classpath: /sqldb/schema-*.sql (with a safe fallback).
+ * - Execute DDL statements in a transaction, ignoring benign "already exists" errors.
+ *
+ * Concurrency:
+ * - Uses an in-memory identity set to avoid re-initialization per datasource identity.
+ */
 public class JdbcSchemaProvider {
 
   private static final Logger log = LoggerFactory.getLogger(JdbcSchemaProvider.class);
   public static final Set<String> schemaInitializedDataSources = new HashSet<>();
 
+  /**
+   * Ensures the schema for the given datasource is present; if missing, loads a vendor-specific
+   * DDL script and applies it in a single transaction. Subsequent calls for the same datasource
+   * identity are no-ops.
+   *
+   * @param dataSource the JDBC datasource
+   * @param dbInfo detected database info, including dialect and identity
+   * @throws RuntimeException if initialization fails
+   */
   public static void initializeSchema(DataSource dataSource, DbInfo dbInfo) {
     log.info("Initializing database schema");
     synchronized (schemaInitializedDataSources) {
@@ -48,6 +68,12 @@ public class JdbcSchemaProvider {
     }
   }
 
+  /**
+   * Resolves the schema DDL file name for the given dialect.
+   *
+   * @param dialect detected database dialect
+   * @return file name under /sqldb/
+   */
   private static String getSchemaFile(DbInfo.Dialect dialect) {
     return switch (dialect) {
       case PostgresSQL -> "schema-postgresql.sql";
@@ -60,6 +86,14 @@ public class JdbcSchemaProvider {
     };
   }
 
+  /**
+   * Reads a schema resource from the classpath. Falls back to the default schema if the requested
+   * resource is not found. Throws if neither is available.
+   *
+   * @param path absolute classpath to the preferred schema resource
+   * @return full SQL contents
+   * @throws Exception if reading resources fails
+   */
   private static String readSchemaFromClasspath(String path) throws Exception {
     InputStream in = JdbcSchemaProvider.class.getResourceAsStream(path);
     if (in == null) {
@@ -74,6 +108,14 @@ public class JdbcSchemaProvider {
     }
   }
 
+  /**
+   * Executes the supplied SQL string by splitting on semicolons and issuing each statement.
+   * Rolls back on non-benign errors; ignores vendor-specific "object already exists" errors.
+   *
+   * @param conn open JDBC connection (transaction controlled by caller)
+   * @param sql complete SQL script to execute
+   * @throws SQLException if execution fails with a non-benign error
+   */
   private static void executeSqlStatements(Connection conn, String sql) throws SQLException {
     log.debug("Executing schema sql:\n{}", sql);
     try (Statement stmt = conn.createStatement()) {
@@ -96,10 +138,25 @@ public class JdbcSchemaProvider {
     }
   }
 
+  /**
+   * Checks whether the minimal schema objects are present.
+   *
+   * @param conn JDBC connection
+   * @return true if expected tables exist
+   * @throws SQLException on metadata errors
+   */
   private static boolean schemaExists(Connection conn) throws SQLException {
     return tableExists(conn, "work_request") && tableExists(conn, "scheduler_lease");
   }
 
+  /**
+   * Vendor-neutral table existence check via {@link java.sql.DatabaseMetaData}.
+   *
+   * @param conn JDBC connection
+   * @param tableName the table name to look for (case-insensitive)
+   * @return true if the table exists
+   * @throws SQLException on metadata errors
+   */
   private static boolean tableExists(Connection conn, String tableName) throws SQLException {
     DatabaseMetaData meta = conn.getMetaData();
     try (ResultSet rs = meta.getTables(conn.getCatalog(), null, null, new String[] {"TABLE"})) {
@@ -116,6 +173,13 @@ public class JdbcSchemaProvider {
   /**
    * Returns true if the SQLException corresponds to an "object already exists" condition
    * across common vendors. This allows running schema DDL safely without IF NOT EXISTS.
+   */
+  /**
+   * Returns true if the SQLException corresponds to an "object already exists" condition
+   * across common vendors. This allows running schema DDL safely without IF NOT EXISTS.
+   *
+   * @param e vendor-specific SQLException
+   * @return whether this error indicates an already existing object
    */
   private static boolean isAlreadyExistsError(SQLException e) {
     String state = e.getSQLState();

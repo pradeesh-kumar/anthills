@@ -23,11 +23,24 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * JDBC-backed implementation of {@link WorkStore} with cross-vendor SQL.
+ * Features:
+ * - Automatic schema initialization using {@link JdbcSchemaProvider} and detected {@link DbInfo}.
+ * - Vendor-aware SQL for claiming work with minimal lock contention.
+ * - Transactional updates with explicit commits and rollback on failure.
+ * Thread-safety: instances are safe to use concurrently; each operation uses its own connection.
+ */
 public final class JdbcWorkStore implements WorkStore {
 
   private final DataSource dataSource;
   private final DbInfo dbInfo;
 
+  /**
+   * Creates a store using the provided datasource, detecting DB info and ensuring the schema exists.
+   *
+   * @param dataSource JDBC datasource (connection pool recommended)
+   */
   private JdbcWorkStore(DataSource dataSource) {
     DbInfo dbInfo = DbInfo.detect(dataSource);
     JdbcSchemaProvider.initializeSchema(dataSource, dbInfo);
@@ -35,10 +48,24 @@ public final class JdbcWorkStore implements WorkStore {
     this.dataSource = dataSource;
   }
 
+  /**
+   * Factory method using an existing {@link DataSource}.
+   *
+   * @param dataSource JDBC datasource
+   * @return a {@link JdbcWorkStore} bound to the datasource
+   */
   public static JdbcWorkStore create(DataSource dataSource) {
     return new JdbcWorkStore(dataSource);
   }
 
+  /**
+   * Factory method that constructs a pooled {@link javax.sql.DataSource} using {@link JdbcSettings}
+   * (HikariCP) and returns a configured store.
+   *
+   * @param jdbcSettings connection and pool settings
+   * @return a {@link JdbcWorkStore}
+   * @throws NullPointerException if {@code jdbcSettings} is null
+   */
   public static JdbcWorkStore create(JdbcSettings jdbcSettings) {
     Objects.requireNonNull(jdbcSettings, "jdbcSettings must not be null");
     HikariConfig hikariConfig = new HikariConfig();
@@ -56,6 +83,17 @@ public final class JdbcWorkStore implements WorkStore {
     return create(new HikariDataSource(hikariConfig));
   }
 
+  /**
+   * Persists a new work item with initial status NEW.
+   *
+   * @param workType routing key
+   * @param payload serialized payload
+   * @param payloadVersion schema version
+   * @param codec codec name used to serialize payload
+   * @param maxRetries optional retry cap; null to use defaults
+   * @return stored {@link WorkRecord}
+   * @throws RuntimeException on SQL errors
+   */
   @Override
   public WorkRecord createWork(String workType, byte[] payload, int payloadVersion, String codec, Integer maxRetries) {
     String id = IdGenerator.generateRandomId();
@@ -88,6 +126,13 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
+  /**
+   * Retrieves a single work item by id.
+   *
+   * @param workId work id
+   * @return present if found
+   * @throws RuntimeException on SQL errors
+   */
   @Override
   public Optional<WorkRecord> getWork(String workId) {
     String sql = "SELECT * FROM work_request WHERE id = ?";
@@ -133,6 +178,14 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
+  /**
+   * Lists work items matching the provided query. If IDs are provided, they take precedence
+   * and other filters are ignored.
+   *
+   * @param query filter and paging configuration
+   * @return matching work records
+   * @throws RuntimeException on SQL errors
+   */
   @Override
   public List<WorkRecord> listWork(WorkQuery query) {
     Objects.requireNonNull(query, "query is required");
@@ -155,14 +208,11 @@ public final class JdbcWorkStore implements WorkStore {
 
       int idx = 1;
       for (Object p : params) {
-        if (p instanceof Timestamp ts) {
-          ps.setTimestamp(idx++, ts);
-        } else if (p instanceof Integer i) {
-          ps.setInt(idx++, i);
-        } else if (p instanceof String s) {
-          ps.setString(idx++, s);
-        } else {
-          ps.setObject(idx++, p);
+        switch (p) {
+          case Timestamp ts -> ps.setTimestamp(idx++, ts);
+          case Integer i -> ps.setInt(idx++, i);
+          case String s -> ps.setString(idx++, s);
+          case null, default -> ps.setObject(idx++, p);
         }
       }
       return WorkRecordRowMapper.retrieveWorkRecords(ps.executeQuery());
@@ -171,6 +221,17 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
+  /**
+   * Attempts to atomically claim up to {@code limit} work items for the given type and owner.
+   * Uses vendor-specific SELECT/locking hints to avoid blocking where possible.
+   *
+   * @param workType routing key to claim
+   * @param ownerId logical owner id
+   * @param limit maximum number of items to claim
+   * @param leaseDuration lease time from now for each claimed item
+   * @return claimed records (size ≤ limit)
+   * @throws RuntimeException on SQL errors
+   */
   @Override
   public List<WorkRecord> claimWork(String workType, String ownerId, int limit, Duration leaseDuration) {
     Instant now = now();
@@ -236,6 +297,15 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
+  /**
+   * Renews the lease for a claimed work item if owned by {@code ownerId}.
+   *
+   * @param workId work id
+   * @param ownerId expected owner
+   * @param leaseDuration lease extension from now
+   * @return true if renewed
+   * @throws RuntimeException on SQL errors
+   */
   @Override
   public boolean renewWorkerLease(String workId, String ownerId, Duration leaseDuration) {
     String sql = """
@@ -262,6 +332,13 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
+  /**
+   * Resets the work item back to NEW and sets a future {@code lease_until} to delay re-claim.
+   *
+   * @param id work id
+   * @param delay delay before it becomes claimable again
+   * @throws RuntimeException on SQL errors
+   */
   @Override
   public void reschedule(String id, Duration delay) {
     Instant now = now();
@@ -285,11 +362,24 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
+  /**
+   * Marks a claimed work item as succeeded.
+   *
+   * @param workId work id
+   * @param ownerId expected owner
+   */
   @Override
   public void markSucceeded(String workId, String ownerId) {
     updateTerminal(workId, ownerId, WorkRequest.Status.SUCCEEDED, null);
   }
 
+  /**
+   * Marks a claimed work item as failed with a short human-readable reason.
+   *
+   * @param workId work id
+   * @param ownerId expected owner
+   * @param reason failure reason (may be truncated)
+   */
   @Override
   public void markFailed(String workId, String ownerId, String reason) {
     updateTerminal(workId, ownerId, WorkRequest.Status.FAILED, reason);
@@ -323,6 +413,12 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
+  /**
+   * Best-effort cancellation of a work item. If already terminal this is a no-op.
+   *
+   * @param id work id
+   * @throws RuntimeException on SQL errors
+   */
   @Override
   public void markCancelled(String id) {
     String sql = """
@@ -345,6 +441,13 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
+  /**
+   * Tries to acquire the scheduler lease for {@code jobName}. If the lease is expired,
+   * updates the owner and lease_until; otherwise attempts to insert a new row.
+   *
+   * @return true if the lease was acquired by this owner
+   * @throws RuntimeException on SQL errors
+   */
   @Override
   public boolean tryAcquireSchedulerLease(String jobName, String ownerId, Duration leaseDuration) {
     Instant now = now();
@@ -395,6 +498,12 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
+  /**
+   * Renews a scheduler lease for the given job and owner.
+   *
+   * @return true if the lease was renewed
+   * @throws RuntimeException on SQL errors
+   */
   @Override
   public boolean renewSchedulerLease(String jobName, String ownerId, Duration leaseDuration) {
     String sql = """
@@ -419,6 +528,11 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
+  /**
+   * Releases a scheduler lease held by the given owner (best-effort).
+   *
+   * @throws RuntimeException on SQL errors
+   */
   @Override
   public void releaseSchedulerLease(String jobName, String ownerId) {
     String sql = """
@@ -439,6 +553,10 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
+  /**
+   * Builds a vendor-aware SELECT that chooses claimable rows and minimizes lock contention.
+   * Parameter order is always: work_type, now_ts, limit (last).
+   */
   private String buildSelectIdsForClaimSql() {
     // Build a SELECT of candidate ids that avoids waiting on locked rows where supported.
     // Parameter order is always: work_type, now_ts, limit (last placeholder).
@@ -504,12 +622,15 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
+  /**
+   * Detects vendor-specific duplicate key violations.
+   */
   private boolean isDuplicateKey(SQLException e) {
     String state = e.getSQLState();
     int code = e.getErrorCode();
     String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
 
-    // Postgres unique_violation
+    // Postgres or DB2 unique_violation
     if ("23505".equals(state)) return true;
     // MySQL duplicate entry
     if ("23000".equals(state) && code == 1062) return true;
@@ -519,18 +640,22 @@ public final class JdbcWorkStore implements WorkStore {
     if (code == 2627 || code == 2601) return true;
     // Oracle ORA-00001
     if (code == 1) return true;
-    // DB2 23505
-    if ("23505".equals(state)) return true;
 
     return msg.contains("duplicate") || msg.contains("unique constraint") || msg.contains("already exists");
   }
 
+  /**
+   * Retrieves a connection with auto-commit disabled for explicit transactional control.
+   */
   private Connection getConnection() throws SQLException {
     Connection c = dataSource.getConnection();
     c.setAutoCommit(false);
     return c;
   }
 
+  /**
+   * Abstraction for obtaining the current instant (facilitates testing).
+   */
   private Instant now() {
     return Instant.now();
   }

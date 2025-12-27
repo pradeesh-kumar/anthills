@@ -5,6 +5,16 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Locale;
 
+/**
+ * Connection and pool configuration used to create a JDBC {@code DataSource}.
+ *
+ * @param jdbcUrl JDBC connection string
+ * @param username database username
+ * @param password database password (may be blank, but never null)
+ * @param maxPoolSize maximum number of connections in the pool
+ * @param minIdleConnections minimum number of idle connections to keep alive
+ * @param connectionTimeoutMs maximum time to wait for a connection from the pool (milliseconds)
+ */
 public record JdbcSettings(
   String jdbcUrl,
   String username,
@@ -23,10 +33,23 @@ public record JdbcSettings(
     }
   }
 
+  /**
+   * Creates a new builder with sensible defaults.
+   *
+   * Defaults:
+   * - maxPoolSize = 100
+   * - minIdleConnections = 10
+   * - connectionTimeoutMs = 30_000
+   *
+   * @return a new builder
+   */
   public static Builder builder() {
     return new Builder();
   }
 
+  /**
+   * Fluent builder for {@link JdbcSettings}.
+   */
   public static class Builder {
     private String jdbcUrl;
     private String username;
@@ -39,36 +62,60 @@ public record JdbcSettings(
     public Builder() {
     }
 
+    /**
+     * Sets the JDBC connection URL (required).
+     */
     public Builder jdbcUrl(String jdbcUrl) {
       this.jdbcUrl = jdbcUrl;
       return this;
     }
 
+    /**
+     * Sets the database username (required).
+     */
     public Builder username(String username) {
       this.username = username;
       return this;
     }
 
+    /**
+     * Sets the database password (required; may be blank but not null).
+     */
     public Builder password(String password) {
       this.password = password;
       return this;
     }
 
+    /**
+     * Sets the maximum number of connections in the pool (must be > 0).
+     */
     public Builder maxPoolSize(int maxPoolSize) {
       this.maxPoolSize = maxPoolSize;
       return this;
     }
 
+    /**
+     * Sets the minimum number of idle connections (0..maxPoolSize).
+     */
     public Builder minIdleConnections(int minIdleConnections) {
       this.minIdleConnections = minIdleConnections;
       return this;
     }
 
+    /**
+     * Sets the maximum time to wait for a connection from the pool in milliseconds (≥ 1000).
+     */
     public Builder connectionTimeoutMs(long connectionTimeoutMs) {
       this.connectionTimeoutMs = connectionTimeoutMs;
       return this;
     }
 
+    /**
+     * Validates inputs and constructs immutable {@link JdbcSettings}.
+     *
+     * @return settings instance
+     * @throws IllegalArgumentException if any constraint is violated
+     */
     public JdbcSettings build() {
       validate();
       return new JdbcSettings(jdbcUrl, username, password, maxPoolSize, minIdleConnections, connectionTimeoutMs);

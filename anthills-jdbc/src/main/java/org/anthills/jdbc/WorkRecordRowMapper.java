@@ -9,8 +9,22 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Maps JDBC {@link ResultSet} rows to {@link org.anthills.api.work.WorkRecord} instances.
+ *
+ * Column expectations (case-insensitive):
+ * id, work_type, payload, payload_type, payload_version, codec, status, max_retries,
+ * attempt_count, owner_id, lease_until, failure_reason, created_ts, updated_ts, started_ts, completed_ts.
+ */
 public final class WorkRecordRowMapper {
 
+  /**
+   * Maps the current row of the {@link ResultSet} to a {@link WorkRecord}.
+   *
+   * @param rs positioned result set
+   * @return mapped WorkRecord
+   * @throws SQLException if a JDBC access error occurs
+   */
   public static WorkRecord map(ResultSet rs) throws SQLException {
     return WorkRecord.builder()
       .id(rs.getString("id"))
@@ -36,6 +50,13 @@ public final class WorkRecordRowMapper {
       .build();
   }
 
+  /**
+   * Iterates through the {@link ResultSet} and maps all rows to {@link WorkRecord}s.
+   *
+   * @param rs result set to iterate (will be consumed)
+   * @return list of mapped work records (possibly empty)
+   * @throws SQLException if a JDBC access error occurs
+   */
   public static List<WorkRecord> retrieveWorkRecords(ResultSet rs) throws SQLException {
     List<WorkRecord> results = new ArrayList<>();
     while (rs.next()) {
@@ -44,6 +65,14 @@ public final class WorkRecordRowMapper {
     return results;
   }
 
+  /**
+   * Reads a nullable timestamp column as {@link Instant}.
+   *
+   * @param rs result set
+   * @param column column name
+   * @return Instant value, or null if the column is SQL NULL
+   * @throws SQLException if a JDBC access error occurs
+   */
   private static Instant getInstantSafely(ResultSet rs, String column) throws SQLException {
     Timestamp ts = rs.getTimestamp(column);
     return ts != null ? ts.toInstant() : null;

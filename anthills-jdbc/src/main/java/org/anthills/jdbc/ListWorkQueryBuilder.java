@@ -19,13 +19,23 @@ public final class ListWorkQueryBuilder {
   private final StringBuilder sql = new StringBuilder("SELECT * FROM work_request WHERE 1=1");
   private final List<Object> params = new ArrayList<>();
 
+  /**
+   * Creates a builder bound to a specific {@link WorkQuery} and database dialect.
+   *
+   * @param query high-level filtering and paging criteria
+   * @param dialect target SQL dialect used to render LIMIT/OFFSET variants
+   * @throws NullPointerException if any argument is null
+   */
   public ListWorkQueryBuilder(WorkQuery query, DbInfo.Dialect dialect) {
     this.query = Objects.requireNonNull(query, "query is required");
     this.dialect = Objects.requireNonNull(dialect, "dialect is required");
   }
 
   /**
-   * Build and return the SQL string with placeholders.
+   * Builds and returns the SQL string with JDBC placeholders.
+   * Call {@link #params()} afterwards to get the ordered parameter list.
+   *
+   * @return SQL string suitable for a {@link java.sql.PreparedStatement}
    */
   public String buildSql() {
     build();
@@ -33,12 +43,19 @@ public final class ListWorkQueryBuilder {
   }
 
   /**
-   * Return the parameters in the same order as the placeholders in the SQL.
+   * Returns the parameters in the same order as the placeholders in the SQL
+   * produced by {@link #buildSql()}.
+   *
+   * @return ordered parameter values
    */
   public List<Object> params() {
     return params;
   }
 
+  /**
+   * Internal builder that appends WHERE clauses based on {@link WorkQuery}, applies
+   * ordering, and renders paging syntax depending on {@link DbInfo.Dialect}.
+   */
   private void build() {
     // If explicitly provided an empty status set, force empty results.
     if (query.statuses() != null && query.statuses().isEmpty()) {

@@ -3,7 +3,6 @@ package org.anthills.examples.work;
 import org.anthills.api.work.ProcessorConfig;
 import org.anthills.api.work.WorkClient;
 import org.anthills.api.work.WorkRequestProcessor;
-import org.anthills.core.JsonPayloadCodec;
 import org.anthills.core.factory.WorkClients;
 import org.anthills.core.factory.WorkRequestProcessors;
 import org.anthills.examples.Common;
@@ -17,15 +16,14 @@ public class NotificationExample {
 
     DataSource dataSource = Common.dataSource();
     var store = JdbcWorkStore.create(dataSource);
-    var codec = JsonPayloadCodec.defaultInstance();
 
-    WorkClient notificationWorkClient = WorkClients.create(store, codec);
+    WorkClient notificationWorkClient = WorkClients.create(store);
     notificationWorkClient.submit("notification", new SendEmail("user@example.com", "Welcome", "Hello from Anthills!"));
     notificationWorkClient.submit("notification", new SendSms("+441234567890", "Hello from Anthills!"));
 
     ProcessorConfig config = ProcessorConfig.defaults();
 
-    WorkRequestProcessor processor = WorkRequestProcessors.create("notification", store, codec, config);
+    WorkRequestProcessor processor = WorkRequestProcessors.create("notification", store, config);
 
     processor.registerHandler("notification", SendEmail.class, req -> sendEmail(req.payload()));
     processor.registerHandler("notification", SendSms.class, req -> sendSms(req.payload()));
