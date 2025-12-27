@@ -5,8 +5,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Locale;
 
-import static org.anthills.core.util.Utils.isBlank;
-
 public record JdbcSettings(
   String jdbcUrl,
   String username,
@@ -101,6 +99,10 @@ public record JdbcSettings(
         throw new IllegalArgumentException("Connection timeout must be at least 1000 ms");
       }
       warnIfNonProdDatabase(this.jdbcUrl);
+    }
+
+    private static boolean isBlank(String value) {
+      return value == null || value.trim().isEmpty();
     }
   }
 }
