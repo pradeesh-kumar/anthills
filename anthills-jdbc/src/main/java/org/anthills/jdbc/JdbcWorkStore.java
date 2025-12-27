@@ -101,6 +101,18 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
+  private Optional<WorkRecord> getWork(Connection c, String workId) {
+    String sql = "SELECT * FROM work_request WHERE id = ?";
+    try (PreparedStatement ps = c.prepareStatement(sql)) {
+      ps.setString(1, workId);
+      ResultSet rs = ps.executeQuery();
+      if (!rs.next()) return Optional.empty();
+      return Optional.of(WorkRecordRowMapper.map(rs));
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   @Override
   public List<WorkRecord> listWork(WorkQuery query) {
     Objects.requireNonNull(query, "query is required");
@@ -176,7 +188,7 @@ public final class JdbcWorkStore implements WorkStore {
 
         int updated = update.executeUpdate();
         if (updated == 1) {
-          claimed.add(getWork(id).orElseThrow());
+          claimed.add(getWork(c, id).orElseThrow());
         }
       }
       c.commit();

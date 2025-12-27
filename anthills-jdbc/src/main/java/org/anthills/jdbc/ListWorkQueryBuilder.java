@@ -13,6 +13,7 @@ import java.util.Objects;
  * Exposes the SQL string with placeholders and the ordered parameter list.
  */
 public final class ListWorkQueryBuilder {
+
   private final WorkQuery query;
   private final DbInfo.Dialect dialect;
   private final StringBuilder sql = new StringBuilder("SELECT * FROM work_request WHERE 1=1");
