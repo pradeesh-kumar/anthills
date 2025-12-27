@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Set;
 
 public record WorkQuery(
+  Set<String> ids,
   String workType,
   Set<WorkRequest.Status> statuses,
   Instant createdAfter,
@@ -18,6 +19,6 @@ public record WorkQuery(
   }
 
   public static WorkQuery defaults(String workType) {
-    return new WorkQuery(workType, null, null, null, Page.of(1, 0));
+    return new WorkQuery(Set.of(), workType, null, null, null, Page.of(1, 0));
   }
 }

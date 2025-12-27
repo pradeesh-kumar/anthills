@@ -73,6 +73,7 @@ final class JdbcWorkStoreTest {
 
     // Filter typeA + NEW only, order by created_ts desc; page(limit=2, offset=1) should return second and third newest: w3 then w1
     WorkQuery q = new WorkQuery(
+      null,
       "typeA",
       Set.of(WorkRequest.Status.NEW),
       null,
@@ -84,6 +85,41 @@ final class JdbcWorkStoreTest {
     assertEquals(2, result.size());
     assertEquals("w3", result.get(0).id());
     assertEquals("w1", result.get(1).id());
+  }
+
+  @Test
+  void listWork_by_ids_ignores_other_filters_and_preserves_order() throws Exception {
+    ds = TestJdbc.newH2DataSource();
+    store = JdbcWorkStore.create(ds);
+
+    Instant t0 = Instant.now().minusSeconds(300);
+    byte[] payload = new byte[]{9};
+
+    try (Connection c = ds.getConnection()) {
+      TestJdbc.insertWork(c, "i1", "typeX", payload, "java.lang.String", 1, "json", "NEW", 5, 0, null, null, null, t0.plusSeconds(10), t0.plusSeconds(10), null, null);
+      TestJdbc.insertWork(c, "i2", "typeY", payload, "java.lang.String", 1, "json", "FAILED", 5, 0, null, null, null, t0.plusSeconds(20), t0.plusSeconds(20), t0.plusSeconds(21), null);
+      TestJdbc.insertWork(c, "i3", "typeX", payload, "java.lang.String", 1, "json", "IN_PROGRESS", 5, 1, "owner", t0.plusSeconds(600), null, t0.plusSeconds(30), t0.plusSeconds(30), t0.plusSeconds(31), null);
+      c.commit();
+    }
+
+    java.util.LinkedHashSet<String> ids = new java.util.LinkedHashSet<>();
+    ids.add("i2");
+    ids.add("i1");
+
+    // Intentionally set filters that would normally exclude some rows; ids should override and only ids filter applies.
+    WorkQuery q = new WorkQuery(
+      ids,
+      "typeZ",
+      Set.of(WorkRequest.Status.NEW),
+      t0.plusSeconds(15),
+      null,
+      WorkQuery.Page.of(10, 0)
+    );
+
+    List<WorkRecord> result = store.listWork(q);
+    assertEquals(2, result.size());
+    assertEquals("i2", result.get(0).id());
+    assertEquals("i1", result.get(1).id());
   }
 
   @Test

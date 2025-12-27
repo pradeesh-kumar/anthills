@@ -17,7 +17,9 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -101,13 +103,31 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
-  private Optional<WorkRecord> getWork(Connection c, String workId) {
-    String sql = "SELECT * FROM work_request WHERE id = ?";
-    try (PreparedStatement ps = c.prepareStatement(sql)) {
-      ps.setString(1, workId);
-      ResultSet rs = ps.executeQuery();
-      if (!rs.next()) return Optional.empty();
-      return Optional.of(WorkRecordRowMapper.map(rs));
+  private List<WorkRecord> getWorkByIds(Connection c, List<String> ids) {
+    List<WorkRecord> ordered = new ArrayList<>();
+    if (ids.isEmpty()) return ordered;
+
+    StringBuilder sb = new StringBuilder("SELECT * FROM work_request WHERE id IN (");
+    for (int i = 0; i < ids.size(); i++) {
+      if (i > 0) sb.append(", ");
+      sb.append("?");
+    }
+    sb.append(")");
+
+    try (PreparedStatement ps = c.prepareStatement(sb.toString())) {
+      for (int i = 0; i < ids.size(); i++) {
+        ps.setString(i + 1, ids.get(i));
+      }
+      List<WorkRecord> rows = WorkRecordRowMapper.retrieveWorkRecords(ps.executeQuery());
+      Map<String, WorkRecord> byId = new HashMap<>();
+      for (WorkRecord r : rows) {
+        byId.put(r.id(), r);
+      }
+      for (String id : ids) {
+        WorkRecord r = byId.get(id);
+        if (r != null) ordered.add(r);
+      }
+      return ordered;
     } catch (SQLException e) {
       throw new RuntimeException(e);
     }
@@ -116,6 +136,15 @@ public final class JdbcWorkStore implements WorkStore {
   @Override
   public List<WorkRecord> listWork(WorkQuery query) {
     Objects.requireNonNull(query, "query is required");
+
+    // If ids are provided, fetch by ids and return immediately (ignore other filters)
+    if (query.ids() != null && !query.ids().isEmpty()) {
+      try (Connection c = dataSource.getConnection()) {
+        return getWorkByIds(c, new ArrayList<>(query.ids()));
+      } catch (SQLException e) {
+        throw new RuntimeException("Failed to list work by ids", e);
+      }
+    }
 
     ListWorkQueryBuilder b = new ListWorkQueryBuilder(query, dbInfo.dialect());
     String sql = b.buildSql();
@@ -161,7 +190,7 @@ public final class JdbcWorkStore implements WorkStore {
         AND (owner_id IS NULL OR lease_until < ?)
       """;
 
-    List<WorkRecord> claimed = new ArrayList<>();
+    List<String> claimedIds = new ArrayList<>();
 
     try (Connection c = getConnection();
          PreparedStatement select = c.prepareStatement(selectSql);
@@ -175,8 +204,10 @@ public final class JdbcWorkStore implements WorkStore {
 
       ResultSet rs = select.executeQuery();
 
+      List<String> selectedIds = new ArrayList<>();
       while (rs.next()) {
         String id = rs.getString(1);
+        selectedIds.add(id);
 
         int uIdx = 1;
         update.setString(uIdx++, ownerId);
@@ -186,11 +217,18 @@ public final class JdbcWorkStore implements WorkStore {
         update.setString(uIdx++, id);
         update.setTimestamp(uIdx, Timestamp.from(now));
 
-        int updated = update.executeUpdate();
-        if (updated == 1) {
-          claimed.add(getWork(c, id).orElseThrow());
+        update.addBatch();
+      }
+
+      int[] counts = update.executeBatch();
+      for (int i = 0; i < counts.length; i++) {
+        int count = counts[i];
+        if (count == 1 || count == java.sql.Statement.SUCCESS_NO_INFO) {
+          claimedIds.add(selectedIds.get(i));
         }
       }
+
+      List<WorkRecord> claimed = getWorkByIds(c, claimedIds);
       c.commit();
       return claimed;
     } catch (SQLException e) {

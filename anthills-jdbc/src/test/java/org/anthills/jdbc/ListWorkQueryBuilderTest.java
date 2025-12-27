@@ -19,6 +19,7 @@ final class ListWorkQueryBuilderTest {
     Instant before = Instant.now().plusSeconds(3600);
 
     WorkQuery q = new WorkQuery(
+      null,
       "email",
       EnumSet.of(WorkRequest.Status.NEW, WorkRequest.Status.IN_PROGRESS),
       after,
@@ -51,6 +52,7 @@ final class ListWorkQueryBuilderTest {
   @Test
   void empty_statuses_forces_no_results() {
     WorkQuery q = new WorkQuery(
+      null,
       "x",
       EnumSet.noneOf(WorkRequest.Status.class),
       null,
@@ -70,6 +72,7 @@ final class ListWorkQueryBuilderTest {
   @Test
   void uses_mssql_pagination_syntax_when_dialect_mssql() {
     WorkQuery q = new WorkQuery(
+      null,
       null,
       null,
       null,
