@@ -135,7 +135,7 @@ public final class JdbcWorkStore implements WorkStore {
     Instant now = now();
     Instant leaseUntil = now.plus(leaseDuration);
 
-    String selectSql = buildSelectEligibleIdsSql();
+    String selectSql = buildSelectIdsForClaimSql();
     String updateSql = """
       UPDATE work_request
       SET status = 'IN_PROGRESS',
@@ -158,7 +158,7 @@ public final class JdbcWorkStore implements WorkStore {
       int sIdx = 1;
       select.setString(sIdx++, workType);
       select.setTimestamp(sIdx++, Timestamp.from(now));
-      // limit param position depends on dialect but buildSelectEligibleIdsSql always places it as last placeholder
+      // limit param position depends on dialect but buildSelectIdsForClaimSql always places it as last placeholder
       select.setInt(sIdx, limit);
 
       ResultSet rs = select.executeQuery();
@@ -389,20 +389,69 @@ public final class JdbcWorkStore implements WorkStore {
     }
   }
 
-  private String buildSelectEligibleIdsSql() {
-    // Base WHERE and ORDER BY; vendor-specific limit/fetch appended at end
-    String base = """
-      SELECT id FROM work_request
-      WHERE work_type = ?
-        AND status = 'NEW'
-        AND (lease_until IS NULL OR lease_until < ?)
-      ORDER BY created_ts
-      """;
-    return switch (dbInfo.dialect()) {
-      case MSSQL -> base + " OFFSET 0 ROWS FETCH NEXT ? ROWS ONLY";
-      case Oracle, DB2 -> base + " FETCH FIRST ? ROWS ONLY";
-      default -> base + " LIMIT ?";
-    };
+  private String buildSelectIdsForClaimSql() {
+    // Build a SELECT of candidate ids that avoids waiting on locked rows where supported.
+    // Parameter order is always: work_type, now_ts, limit (last placeholder).
+    DbInfo.Dialect d = dbInfo.dialect();
+
+    if (d == DbInfo.Dialect.PostgresSQL) {
+      // Lock and skip locked rows to avoid waiting; keep limit last
+      return """
+        SELECT id FROM work_request
+        WHERE work_type = ?
+          AND status = 'NEW'
+          AND (lease_until IS NULL OR lease_until < ?)
+        ORDER BY created_ts
+        LIMIT ? FOR UPDATE SKIP LOCKED
+        """;
+    } else if (d == DbInfo.Dialect.MySQL) {
+      // MySQL 8+: SKIP LOCKED supported with FOR UPDATE
+      return """
+        SELECT id FROM work_request
+        WHERE work_type = ?
+          AND status = 'NEW'
+          AND (lease_until IS NULL OR lease_until < ?)
+        ORDER BY created_ts
+        LIMIT ? FOR UPDATE SKIP LOCKED
+        """;
+    } else if (d == DbInfo.Dialect.MSSQL) {
+      // SQL Server: READPAST skips locked rows; UPDLOCK/ROWLOCK to take update locks during selection
+      return """
+        SELECT id FROM work_request WITH (READPAST, UPDLOCK, ROWLOCK)
+        WHERE work_type = ?
+          AND status = 'NEW'
+          AND (lease_until IS NULL OR lease_until < ?)
+        ORDER BY created_ts
+        OFFSET 0 ROWS FETCH NEXT ? ROWS ONLY
+        """;
+    } else if (d == DbInfo.Dialect.Oracle) {
+      // Oracle: use inline view for ORDER BY + ROWNUM limiting; lock and skip locked
+      return """
+        SELECT id FROM (
+          SELECT id FROM work_request
+          WHERE work_type = ?
+            AND status = 'NEW'
+            AND (lease_until IS NULL OR lease_until < ?)
+          ORDER BY created_ts
+        )
+        WHERE ROWNUM <= ? FOR UPDATE SKIP LOCKED
+        """;
+    } else {
+      // DB2/Sqlite/H2/Unknown: simple limit/fetch without locking hints
+      String base = """
+        SELECT id FROM work_request
+        WHERE work_type = ?
+          AND status = 'NEW'
+          AND (lease_until IS NULL OR lease_until < ?)
+        ORDER BY created_ts
+        """;
+      if (d == DbInfo.Dialect.DB2) {
+        return base + " FETCH FIRST ? ROWS ONLY";
+      } else {
+        // H2, Sqlite and others
+        return base + " LIMIT ?";
+      }
+    }
   }
 
   private boolean isDuplicateKey(SQLException e) {
