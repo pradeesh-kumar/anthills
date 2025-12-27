@@ -1,27 +1,37 @@
+-- Oracle schema equivalent to schema-default.sql
+
+-- WorkRequest Table
 CREATE TABLE work_request
 (
-    id           VARCHAR2(100) PRIMARY KEY,
-    payload_class VARCHAR(1000) NOT NULL,
-    payload      CLOB,
-    status       VARCHAR2(20) NOT NULL,
-    details      CLOB,
-    max_retries  INTEGER NOT NULL DEFAULT 0,
-    owner        VARCHAR(100),
-    lease_until  TIMESTAMP,
-    created_ts   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_ts   TIMESTAMP,
-    started_ts   TIMESTAMP,
-    completed_ts TIMESTAMP
+    id              VARCHAR2(36)    PRIMARY KEY,
+    work_type       VARCHAR2(100)   NOT NULL,
+
+    payload         BLOB            NOT NULL,
+    payload_type    VARCHAR2(500)   NOT NULL,
+    payload_version NUMBER(10)      NOT NULL,
+    codec           VARCHAR2(50)    NOT NULL,
+
+    status          VARCHAR2(20)    NOT NULL,
+    attempt_count   NUMBER(10)      DEFAULT 0 NOT NULL,
+    max_retries     NUMBER(10),
+
+    owner_id        VARCHAR2(100),
+    lease_until     TIMESTAMP,
+
+    failure_reason  CLOB,
+
+    created_ts      TIMESTAMP       NOT NULL,
+    updated_ts      TIMESTAMP       NOT NULL,
+    started_ts      TIMESTAMP,
+    completed_ts    TIMESTAMP
 );
 
-CREATE INDEX idx_work_request_payload_class_status ON work_request (payload_class, status);
-CREATE INDEX idx_work_request_updated_ts ON work_request (updated_ts);
+CREATE INDEX idx_wr_claim ON work_request (work_type, status, lease_until);
 
-CREATE TABLE lease
+-- Scheduler Lease Table
+CREATE TABLE scheduler_lease
 (
-    object     VARCHAR2(100) PRIMARY KEY,
-    owner      VARCHAR2(100) NOT NULL,
-    expires_at TIMESTAMP NOT NULL
+    job_name    VARCHAR2(100)  PRIMARY KEY,
+    owner_id    VARCHAR2(100)  NOT NULL,
+    lease_until TIMESTAMP      NOT NULL
 );
-
-CREATE INDEX idx_lease_expires_at ON lease (expires_at);

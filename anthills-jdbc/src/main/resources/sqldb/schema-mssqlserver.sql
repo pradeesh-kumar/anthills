@@ -1,27 +1,37 @@
+-- Microsoft SQL Server schema equivalent to schema-default.sql
+
+-- WorkRequest Table
 CREATE TABLE work_request
 (
-    id           NVARCHAR(100) PRIMARY KEY,
-    payload_class NVARCHAR(1000) NOT NULL,
-    payload      NVARCHAR(MAX),
-    status       NVARCHAR(20) NOT NULL,
-    details      NVARCHAR(MAX),
-    max_retries  INTEGER NOT NULL DEFAULT 0,
-    owner        NVARCHAR(100),
-    lease_until  DATETIME2,
-    created_ts   DATETIME2 DEFAULT SYSUTCDATETIME(),
-    updated_ts   DATETIME2,
-    started_ts   DATETIME2,
-    completed_ts DATETIME2
+    id              VARCHAR(36)     NOT NULL PRIMARY KEY,
+    work_type       NVARCHAR(100)   NOT NULL,
+
+    payload         VARBINARY(MAX)  NOT NULL,
+    payload_type    NVARCHAR(500)   NOT NULL,
+    payload_version INT             NOT NULL,
+    codec           NVARCHAR(50)    NOT NULL,
+
+    status          NVARCHAR(20)    NOT NULL,
+    attempt_count   INT             NOT NULL DEFAULT 0,
+    max_retries     INT             NULL,
+
+    owner_id        NVARCHAR(100)   NULL,
+    lease_until     DATETIME2       NULL,
+
+    failure_reason  NVARCHAR(MAX)   NULL,
+
+    created_ts      DATETIME2       NOT NULL,
+    updated_ts      DATETIME2       NOT NULL,
+    started_ts      DATETIME2       NULL,
+    completed_ts    DATETIME2       NULL
 );
 
-CREATE INDEX idx_work_request_payload_class_status ON work_request (payload_class, status);
-CREATE INDEX idx_work_request_updated_ts ON work_request (updated_ts);
+CREATE INDEX idx_wr_claim ON work_request (work_type, status, lease_until);
 
-CREATE TABLE lease
+-- Scheduler Lease Table
+CREATE TABLE scheduler_lease
 (
-    object     NVARCHAR(100) PRIMARY KEY,
-    owner      NVARCHAR(100) NOT NULL,
-    expires_at DATETIME2 NOT NULL
+    job_name    NVARCHAR(100)  NOT NULL PRIMARY KEY,
+    owner_id    NVARCHAR(100)  NOT NULL,
+    lease_until DATETIME2      NOT NULL
 );
-
-CREATE INDEX idx_lease_expires_at ON lease (expires_at);
