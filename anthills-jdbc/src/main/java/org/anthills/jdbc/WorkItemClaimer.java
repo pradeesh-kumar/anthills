@@ -511,4 +511,5 @@ class SqliteClaimer implements WorkItemClaimer {
       throw new RuntimeException("Failed to claim work requests", e);
     }
   }
+
 }

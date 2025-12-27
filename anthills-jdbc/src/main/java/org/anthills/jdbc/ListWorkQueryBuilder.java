@@ -14,11 +14,13 @@ import java.util.Objects;
  */
 public final class ListWorkQueryBuilder {
   private final WorkQuery query;
+  private final DbInfo.Dialect dialect;
   private final StringBuilder sql = new StringBuilder("SELECT * FROM work_request WHERE 1=1");
   private final List<Object> params = new ArrayList<>();
 
-  public ListWorkQueryBuilder(WorkQuery query) {
+  public ListWorkQueryBuilder(WorkQuery query, DbInfo.Dialect dialect) {
     this.query = Objects.requireNonNull(query, "query is required");
+    this.dialect = Objects.requireNonNull(dialect, "dialect is required");
   }
 
   /**
@@ -72,8 +74,25 @@ public final class ListWorkQueryBuilder {
     int limit = query.page() != null ? query.page().limit() : 100;
     int offset = query.page() != null ? query.page().offset() : 0;
 
-    sql.append(" LIMIT ? OFFSET ?");
-    params.add(limit);
-    params.add(offset);
+    switch (dialect) {
+      case MSSQL -> {
+        // SQL Server uses OFFSET then FETCH NEXT
+        sql.append(" OFFSET ? ROWS FETCH NEXT ? ROWS ONLY");
+        params.add(offset);
+        params.add(limit);
+      }
+      case Oracle, DB2 -> {
+        // Modern Oracle (12c+) and DB2 support OFFSET/FETCH
+        sql.append(" OFFSET ? ROWS FETCH NEXT ? ROWS ONLY");
+        params.add(offset);
+        params.add(limit);
+      }
+      default -> {
+        // Postgres, MySQL, H2, SQLite
+        sql.append(" LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
+      }
+    }
   }
 }

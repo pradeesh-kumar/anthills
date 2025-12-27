@@ -6,6 +6,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class WorkRecordRowMapper {
 
@@ -32,6 +34,14 @@ public final class WorkRecordRowMapper {
       .startedTs(getInstantSafely(rs, "started_ts"))
       .completedTs(getInstantSafely(rs, "completed_ts"))
       .build();
+  }
+
+  public static List<WorkRecord> retrieveWorkRecords(ResultSet rs) throws SQLException {
+    List<WorkRecord> results = new ArrayList<>();
+    while (rs.next()) {
+      results.add(WorkRecordRowMapper.map(rs));
+    }
+    return results;
   }
 
   private static Instant getInstantSafely(ResultSet rs, String column) throws SQLException {
