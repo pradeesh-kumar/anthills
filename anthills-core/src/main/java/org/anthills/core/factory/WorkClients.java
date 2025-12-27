@@ -1,8 +1,8 @@
 package org.anthills.core.factory;
 
-import org.anthills.api.PayloadCodec;
-import org.anthills.api.WorkClient;
-import org.anthills.api.WorkStore;
+import org.anthills.api.codec.PayloadCodec;
+import org.anthills.api.work.WorkClient;
+import org.anthills.api.work.WorkStore;
 import org.anthills.core.work.DefaultWorkClient;
 
 public final class WorkClients {

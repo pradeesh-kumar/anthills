@@ -1,4 +1,6 @@
-package org.anthills.api;
+package org.anthills.api.work;
+
+import org.anthills.api.codec.PayloadCodec;
 
 import java.time.Instant;
 

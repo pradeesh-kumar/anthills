@@ -1,4 +1,4 @@
-package org.anthills.api;
+package org.anthills.api.work;
 
 @FunctionalInterface
 public interface WorkRequestHandler<T> {

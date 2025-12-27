@@ -1,4 +1,4 @@
-package org.anthills.api;
+package org.anthills.api.scheduler;
 
 import com.cronutils.model.CronType;
 import com.cronutils.model.definition.CronDefinitionBuilder;
@@ -18,6 +18,11 @@ public sealed interface Schedule permits Schedule.FixedRate, Schedule.Cron {
   Duration nextDelay();
 
   record FixedRate(Duration interval) implements Schedule {
+
+    public static FixedRate of(Duration interval) {
+      return new FixedRate(interval);
+    }
+
     @Override
     public Duration nextDelay() {
       return interval;
@@ -31,6 +36,10 @@ public sealed interface Schedule permits Schedule.FixedRate, Schedule.Cron {
     public Cron {
       Objects.requireNonNull(expression, "expression");
       PARSER.parse(expression);
+    }
+
+    public static Cron parse(String expression) {
+      return new Cron(expression);
     }
 
     @Override

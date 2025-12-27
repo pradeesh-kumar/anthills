@@ -2,10 +2,10 @@ package org.anthills.jdbc;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import org.anthills.api.WorkQuery;
-import org.anthills.api.WorkRecord;
-import org.anthills.api.WorkRequest;
-import org.anthills.api.WorkStore;
+import org.anthills.api.work.WorkQuery;
+import org.anthills.api.work.WorkRecord;
+import org.anthills.api.work.WorkRequest;
+import org.anthills.api.work.WorkStore;
 import org.anthills.jdbc.util.IdGenerator;
 
 import javax.sql.DataSource;

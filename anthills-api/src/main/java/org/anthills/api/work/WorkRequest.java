@@ -1,4 +1,4 @@
-package org.anthills.api;
+package org.anthills.api.work;
 
 import java.time.Instant;
 import java.util.EnumSet;

@@ -1,4 +1,4 @@
-package org.anthills.api;
+package org.anthills.api.codec;
 
 public interface PayloadCodec {
   String name();

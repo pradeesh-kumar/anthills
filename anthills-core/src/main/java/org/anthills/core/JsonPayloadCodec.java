@@ -1,7 +1,7 @@
 package org.anthills.core;
 
 import com.google.gson.Gson;
-import org.anthills.api.PayloadCodec;
+import org.anthills.api.codec.PayloadCodec;
 
 import java.nio.charset.StandardCharsets;
 

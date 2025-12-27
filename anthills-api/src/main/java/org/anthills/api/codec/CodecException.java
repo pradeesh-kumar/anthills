@@ -1,4 +1,4 @@
-package org.anthills.api;
+package org.anthills.api.codec;
 
 public class CodecException extends RuntimeException {
   public CodecException(String message) {

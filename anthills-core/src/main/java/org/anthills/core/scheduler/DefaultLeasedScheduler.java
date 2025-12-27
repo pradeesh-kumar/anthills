@@ -1,10 +1,10 @@
 package org.anthills.core.scheduler;
 
-import org.anthills.api.Job;
-import org.anthills.api.LeasedScheduler;
-import org.anthills.api.Schedule;
-import org.anthills.api.SchedulerConfig;
-import org.anthills.api.WorkStore;
+import org.anthills.api.scheduler.Job;
+import org.anthills.api.scheduler.LeasedScheduler;
+import org.anthills.api.scheduler.Schedule;
+import org.anthills.api.scheduler.SchedulerConfig;
+import org.anthills.api.work.WorkStore;
 import org.anthills.core.concurrent.LeaseBoundExecutor;
 import org.anthills.core.concurrent.NamedThreadFactory;
 import org.slf4j.Logger;

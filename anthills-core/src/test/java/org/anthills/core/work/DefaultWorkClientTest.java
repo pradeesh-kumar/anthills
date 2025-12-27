@@ -1,6 +1,11 @@
 package org.anthills.core.work;
 
-import org.anthills.api.*;
+import org.anthills.api.codec.PayloadCodec;
+import org.anthills.api.work.SubmissionOptions;
+import org.anthills.api.work.WorkQuery;
+import org.anthills.api.work.WorkRecord;
+import org.anthills.api.work.WorkRequest;
+import org.anthills.api.work.WorkStore;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;

@@ -1,7 +1,7 @@
 package org.anthills.jdbc;
 
-import org.anthills.api.WorkQuery;
-import org.anthills.api.WorkRequest;
+import org.anthills.api.work.WorkQuery;
+import org.anthills.api.work.WorkRequest;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Timestamp;

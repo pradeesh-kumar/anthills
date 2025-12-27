@@ -1,12 +1,12 @@
 package org.anthills.core.work;
 
-import org.anthills.api.PayloadCodec;
-import org.anthills.api.SubmissionOptions;
-import org.anthills.api.WorkClient;
-import org.anthills.api.WorkQuery;
-import org.anthills.api.WorkRecord;
-import org.anthills.api.WorkRequest;
-import org.anthills.api.WorkStore;
+import org.anthills.api.codec.PayloadCodec;
+import org.anthills.api.work.SubmissionOptions;
+import org.anthills.api.work.WorkClient;
+import org.anthills.api.work.WorkQuery;
+import org.anthills.api.work.WorkRecord;
+import org.anthills.api.work.WorkRequest;
+import org.anthills.api.work.WorkStore;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -1,12 +1,12 @@
 package org.anthills.core.work;
 
-import org.anthills.api.PayloadCodec;
-import org.anthills.api.WorkHandler;
-import org.anthills.api.ProcessorConfig;
-import org.anthills.api.WorkRecord;
-import org.anthills.api.WorkRequest;
-import org.anthills.api.WorkRequestProcessor;
-import org.anthills.api.WorkStore;
+import org.anthills.api.codec.PayloadCodec;
+import org.anthills.api.work.WorkHandler;
+import org.anthills.api.work.ProcessorConfig;
+import org.anthills.api.work.WorkRecord;
+import org.anthills.api.work.WorkRequest;
+import org.anthills.api.work.WorkRequestProcessor;
+import org.anthills.api.work.WorkStore;
 import org.anthills.core.concurrent.LeaseBoundExecutor;
 import org.anthills.core.concurrent.NamedThreadFactory;
 import org.anthills.core.util.Backoff;

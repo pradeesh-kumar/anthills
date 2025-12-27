@@ -1,7 +1,7 @@
 package org.anthills.jdbc;
 
 import com.zaxxer.hikari.HikariDataSource;
-import org.anthills.api.WorkRecord;
+import org.anthills.api.work.WorkRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 

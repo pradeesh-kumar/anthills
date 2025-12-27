@@ -1,6 +1,6 @@
 package org.anthills.jdbc;
 
-import org.anthills.api.WorkRecord;
+import org.anthills.api.work.WorkRecord;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;

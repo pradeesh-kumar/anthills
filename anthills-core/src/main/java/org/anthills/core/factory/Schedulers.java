@@ -1,8 +1,8 @@
 package org.anthills.core.factory;
 
-import org.anthills.api.LeasedScheduler;
-import org.anthills.api.SchedulerConfig;
-import org.anthills.api.WorkStore;
+import org.anthills.api.scheduler.LeasedScheduler;
+import org.anthills.api.scheduler.SchedulerConfig;
+import org.anthills.api.work.WorkStore;
 import org.anthills.core.scheduler.DefaultLeasedScheduler;
 
 public final class Schedulers {

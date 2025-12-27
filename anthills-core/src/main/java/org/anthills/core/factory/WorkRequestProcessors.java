@@ -1,9 +1,9 @@
 package org.anthills.core.factory;
 
-import org.anthills.api.PayloadCodec;
-import org.anthills.api.ProcessorConfig;
-import org.anthills.api.WorkRequestProcessor;
-import org.anthills.api.WorkStore;
+import org.anthills.api.codec.PayloadCodec;
+import org.anthills.api.work.ProcessorConfig;
+import org.anthills.api.work.WorkRequestProcessor;
+import org.anthills.api.work.WorkStore;
 import org.anthills.core.work.DefaultWorkRequestProcessor;
 
 public final class WorkRequestProcessors {

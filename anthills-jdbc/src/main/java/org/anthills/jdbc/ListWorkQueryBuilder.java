@@ -1,7 +1,7 @@
 package org.anthills.jdbc;
 
-import org.anthills.api.WorkQuery;
-import org.anthills.api.WorkRequest;
+import org.anthills.api.work.WorkQuery;
+import org.anthills.api.work.WorkRequest;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;

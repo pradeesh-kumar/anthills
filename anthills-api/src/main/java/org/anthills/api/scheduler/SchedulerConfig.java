@@ -1,4 +1,4 @@
-package org.anthills.api;
+package org.anthills.api.scheduler;
 
 import java.time.Duration;
 
@@ -7,7 +7,7 @@ public record SchedulerConfig(
   Duration leaseRenewInterval,
   Duration shutdownTimeout
 ) {
-  public static SchedulerConfig defaultConfig() {
+  public static SchedulerConfig defaults() {
     return new SchedulerConfig(Duration.ofMinutes(5), Duration.ofMinutes(2), Duration.ofSeconds(30));
   }
 }
