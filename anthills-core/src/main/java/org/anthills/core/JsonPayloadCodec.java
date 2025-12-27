@@ -1,4 +1,4 @@
-package org.anthills.jdbc;
+package org.anthills.core;
 
 import com.google.gson.Gson;
 import org.anthills.api.PayloadCodec;

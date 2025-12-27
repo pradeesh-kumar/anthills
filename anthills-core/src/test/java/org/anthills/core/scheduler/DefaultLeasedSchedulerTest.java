@@ -54,7 +54,6 @@ public class DefaultLeasedSchedulerTest {
 
     assertThrows(IllegalArgumentException.class,
       () -> scheduler.schedule("jobA", new Schedule.FixedRate(Duration.ofMillis(50)), job));
-
     scheduler.close();
   }
 

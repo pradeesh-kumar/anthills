@@ -98,7 +98,7 @@ public class DefaultWorkRequestProcessorTest {
 
     // Capture ownerId used by the processor
     ArgumentCaptor<String> ownerCaptor = ArgumentCaptor.forClass(String.class);
-    verify(store, atLeastOnce()).claimWork(eq("email"), ownerCaptor.capture(), anyInt(), any());
+    verify(store, timeout(1000).atLeastOnce()).claimWork(eq("email"), ownerCaptor.capture(), anyInt(), any());
     String ownerId = ownerCaptor.getValue();
 
     verify(store, timeout(1000)).markSucceeded(eq("r1"), eq(ownerId));
@@ -121,11 +121,11 @@ public class DefaultWorkRequestProcessorTest {
     p.start();
 
     ArgumentCaptor<String> ownerCaptor = ArgumentCaptor.forClass(String.class);
-    verify(store, atLeastOnce()).claimWork(eq("email"), ownerCaptor.capture(), anyInt(), any());
+    verify(store, timeout(1000).atLeastOnce()).claimWork(eq("email"), ownerCaptor.capture(), anyInt(), any());
     String ownerId = ownerCaptor.getValue();
 
     verify(store, timeout(1000)).markFailed(eq("r2"), eq(ownerId), argThat(msg -> msg != null && msg.contains("not supported")));
-    verify(codec, never()).decode(any(), any(), anyInt());
+    verify(codec, timeout(1000).times(0)).decode(any(), any(), anyInt());
 
     p.stop();
     p.awaitTermination();
@@ -148,7 +148,7 @@ public class DefaultWorkRequestProcessorTest {
     p.start();
 
     ArgumentCaptor<String> ownerCaptor = ArgumentCaptor.forClass(String.class);
-    verify(store, atLeastOnce()).claimWork(eq("email"), ownerCaptor.capture(), anyInt(), any());
+    verify(store, timeout(1000).atLeastOnce()).claimWork(eq("email"), ownerCaptor.capture(), anyInt(), any());
     String ownerId = ownerCaptor.getValue();
 
     verify(store, timeout(1000)).markFailed(eq("r3"), eq(ownerId), argThat(msg -> msg != null && msg.contains("No handler registered")));
@@ -202,7 +202,7 @@ public class DefaultWorkRequestProcessorTest {
     p.start();
 
     ArgumentCaptor<String> ownerCaptor = ArgumentCaptor.forClass(String.class);
-    verify(store, atLeastOnce()).claimWork(eq("email"), ownerCaptor.capture(), anyInt(), any());
+    verify(store, timeout(1000).atLeastOnce()).claimWork(eq("email"), ownerCaptor.capture(), anyInt(), any());
     String ownerId = ownerCaptor.getValue();
 
     verify(store, timeout(1500)).markFailed(eq("r5"), eq(ownerId), contains("fatal"));

@@ -31,7 +31,7 @@ public class DefaultWorkClientTest {
   }
 
   @Test
-  void submitUsesDefaultsAndDecodes() throws Exception {
+  void submitUsesDefaultsAndDecodes() {
     DefaultWorkClient client = new DefaultWorkClient(store, codec);
 
     String workType = "email";
@@ -75,7 +75,7 @@ public class DefaultWorkClientTest {
   }
 
   @Test
-  void submitWithCustomOptionsForwardsOptions() throws Exception {
+  void submitWithCustomOptionsForwardsOptions() {
     DefaultWorkClient client = new DefaultWorkClient(store, codec);
 
     String workType = "task";
@@ -108,7 +108,7 @@ public class DefaultWorkClientTest {
   }
 
   @Test
-  void submitWrapsEncodeFailure() throws Exception {
+  void submitWrapsEncodeFailure() {
     DefaultWorkClient client = new DefaultWorkClient(store, codec);
 
     when(codec.encode(any(), anyInt())).thenThrow(new RuntimeException("boom"));
@@ -131,7 +131,7 @@ public class DefaultWorkClientTest {
   }
 
   @Test
-  void getReturnsDecodedWorkRequest() throws Exception {
+  void getReturnsDecodedWorkRequest() {
     DefaultWorkClient client = new DefaultWorkClient(store, codec);
 
     byte[] encoded = new byte[]{4, 5};
@@ -172,7 +172,7 @@ public class DefaultWorkClientTest {
   }
 
   @Test
-  void listMapsAndDecodes() throws Exception {
+  void listMapsAndDecodes() {
     DefaultWorkClient client = new DefaultWorkClient(store, codec);
 
     byte[] p1 = new byte[]{1};

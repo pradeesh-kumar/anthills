@@ -10,3 +10,4 @@ Features
 - Revisit indices in Workrequest table
 - Revisit claim wr query -> pick up expired work requests also based on time threshold (Don't immediately claim expired wrs, add a time threshold)
 - Add pause / resume / cancel semantics
+- OwnerId prefix should be customizable

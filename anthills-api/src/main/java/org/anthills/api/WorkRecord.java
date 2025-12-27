@@ -44,23 +44,29 @@ public record WorkRecord(
       throw new IllegalStateException("Failed to decode payload for workId=" + this.id, e);
     }
 
-    return new WorkRequest<>(
-      id(),
-      workType(),
-      decoded,
-      payloadVersion(),
-      this.codec(),
-      status(),
-      attemptCount(),
-      maxRetries(),
-      ownerId(),
-      leaseUntil(),
-      failureReason(),
-      createdTs(),
-      updatedTs(),
-      startedTs(),
-      completedTs()
-    );
+    return WorkRequest.builder()
+      .id(id)
+
+      .workType(workType)
+
+      .payload(decoded)
+      .payloadVersion(payloadVersion)
+      .codec(this.codec)
+
+      .status(status)
+
+      .attemptCount(attemptCount)
+      .maxRetries(maxRetries)
+      .ownerId(ownerId)
+      .leaseUntil(leaseUntil)
+
+      .failureReason(failureReason)
+
+      .createdTs(createdTs)
+      .updatedTs(updatedTs)
+      .startedTs(startedTs)
+      .completedTs(completedTs)
+      .build();
   }
 
   @SuppressWarnings("unchecked")
@@ -83,23 +89,29 @@ public record WorkRecord(
       throw new IllegalStateException("Failed to decode payload for workId=" + this.id, e);
     }
 
-    return new WorkRequest<>(
-      id(),
-      workType(),
-      decoded,
-      payloadVersion(),
-      this.codec(),
-      status(),
-      attemptCount(),
-      maxRetries(),
-      ownerId(),
-      leaseUntil(),
-      failureReason(),
-      createdTs(),
-      updatedTs(),
-      startedTs(),
-      completedTs()
-    );
+    return WorkRequest.<T>builder()
+      .id(id)
+
+      .workType(workType)
+
+      .payload(decoded)
+      .payloadVersion(payloadVersion)
+      .codec(this.codec)
+
+      .status(status)
+
+      .attemptCount(attemptCount)
+      .maxRetries(maxRetries)
+      .ownerId(ownerId)
+      .leaseUntil(leaseUntil)
+
+      .failureReason(failureReason)
+
+      .createdTs(createdTs)
+      .updatedTs(updatedTs)
+      .startedTs(startedTs)
+      .completedTs(completedTs)
+      .build();
   }
 
   public static Builder builder() {
