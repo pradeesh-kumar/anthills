@@ -73,7 +73,7 @@ public class DefaultWorkClient implements WorkClient {
     } catch (Exception e) {
       throw new IllegalArgumentException("Failed to encode payload of type " + payload.getClass().getName(), e);
     }
-    WorkRecord record = store.createWork(workType, encodedPayload, options.payloadVersion(), options.codec(), options.maxAttempts());
+    WorkRecord record = store.createWork(workType, encodedPayload, payload.getClass().getName(), options.payloadVersion(), options.codec(), options.maxAttempts());
     return (WorkRequest<T>) record.toWorkRequest(codec);
   }
 

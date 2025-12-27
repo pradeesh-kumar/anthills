@@ -53,6 +53,7 @@
     <slf4j.version>2.0.17</slf4j.version>
     <logback.classic.version>1.5.21</logback.classic.version>
     <cronutils.version>9.2.1</cronutils.version>
+    <mustache.version>0.9.14</mustache.version>
     <maven.javadoc.plugin.version>3.12.0</maven.javadoc.plugin.version>
   </properties>
 
@@ -77,6 +78,11 @@
         <groupId>com.cronutils</groupId>
         <artifactId>cron-utils</artifactId>
         <version>${cronutils.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.spullara.mustache.java</groupId>
+        <artifactId>compiler</artifactId>
+        <version>${mustache.version}</version>
       </dependency>
 
       <!-- Test Dependencies -->

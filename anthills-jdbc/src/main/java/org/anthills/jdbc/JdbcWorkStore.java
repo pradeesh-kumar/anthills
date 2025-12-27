@@ -88,6 +88,7 @@ public final class JdbcWorkStore implements WorkStore {
    *
    * @param workType routing key
    * @param payload serialized payload
+   * @param payloadType class name of the payload
    * @param payloadVersion schema version
    * @param codec codec name used to serialize payload
    * @param maxRetries optional retry cap; null to use defaults
@@ -95,29 +96,31 @@ public final class JdbcWorkStore implements WorkStore {
    * @throws RuntimeException on SQL errors
    */
   @Override
-  public WorkRecord createWork(String workType, byte[] payload, int payloadVersion, String codec, Integer maxRetries) {
+  public WorkRecord createWork(String workType, byte[] payload, String payloadType, int payloadVersion, String codec, Integer maxRetries) {
     String id = IdGenerator.generateRandomId();
     Instant now = now();
 
     String sql = """
       INSERT INTO work_request (
-          id, work_type, payload, payload_version, codec,
+          id, work_type, payload, payload_type, payload_version, codec,
           status, attempt_count, max_retries,
           created_ts, updated_ts
       )
-      VALUES (?, ?, ?, ?, ?, 'NEW', 0, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, 'NEW', 0, ?, ?, ?)
       """;
 
     try (Connection c = getConnection();
          PreparedStatement ps = c.prepareStatement(sql)) {
-      ps.setString(1, id);
-      ps.setString(2, workType);
-      ps.setBytes(3, payload);
-      ps.setInt(4, payloadVersion);
-      ps.setString(5, codec);
-      ps.setObject(6, maxRetries);
-      ps.setTimestamp(7, Timestamp.from(now));
-      ps.setTimestamp(8, Timestamp.from(now));
+      int idx = 1;
+      ps.setString(idx++, id);
+      ps.setString(idx++, workType);
+      ps.setBytes(idx++, payload);
+      ps.setString(idx++, payloadType);
+      ps.setInt(idx++, payloadVersion);
+      ps.setString(idx++, codec);
+      ps.setObject(idx++, maxRetries);
+      ps.setTimestamp(idx++, Timestamp.from(now));
+      ps.setTimestamp(idx++, Timestamp.from(now));
       ps.executeUpdate();
       c.commit();
       return getWork(id).orElseThrow();

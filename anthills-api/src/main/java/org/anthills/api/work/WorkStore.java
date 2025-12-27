@@ -18,12 +18,13 @@ public interface WorkStore {
    *
    * @param workType logical routing key
    * @param payload serialized payload bytes
+   * @param payloadType class name of payload
    * @param payloadVersion semantic schema version for the payload
    * @param codec name of the codec used to serialize the payload
    * @param maxRetries optional cap on retry attempts; {@code null} to use processor defaults
    * @return the stored {@link WorkRecord}
    */
-  WorkRecord createWork(String workType, byte[] payload, int payloadVersion, String codec, Integer maxRetries);
+  WorkRecord createWork(String workType, byte[] payload, String payloadType, int payloadVersion, String codec, Integer maxRetries);
 
   /**
    * Fetches a single work item by id.

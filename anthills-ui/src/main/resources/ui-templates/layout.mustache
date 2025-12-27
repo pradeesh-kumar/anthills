@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{title}}</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 0;
+            background: #fafafa;
+        }
+
+        header {
+            background: #222;
+            color: #fff;
+            padding: 12px 20px;
+        }
+
+        header a {
+            color: #fff;
+            margin-right: 16px;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        main {
+            padding: 20px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            background: #fff;
+        }
+
+        th, td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background: #f0f0f0;
+        }
+
+        .status-FAILED {
+            color: #b00020;
+            font-weight: bold;
+        }
+
+        .status-IN_PROGRESS {
+            color: #e65100;
+        }
+
+        .status-SUCCEEDED {
+            color: #2e7d32;
+        }
+
+        .status-NEW {
+            color: #1565c0;
+        }
+
+        .muted {
+            color: #666;
+        }
+
+        .card {
+            background: #fff;
+            padding: 16px;
+            margin-bottom: 16px;
+            border-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body>
+<header>
+    <strong>Anthills 🐜</strong>
+    <a href="/">Dashboard</a>
+    <a href="/work">Work</a>
+    <a href="/scheduler">Scheduler</a>
+</header>
+
+<main>
+    {{{content}}}
+</main>
+</body>
+</html>

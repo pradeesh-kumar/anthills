@@ -1,0 +1,29 @@
+{{> layout}}
+
+<h1>Dashboard</h1>
+
+<div style="display:flex; gap:16px;">
+  <div class="card">
+    <h3>Total Work</h3>
+    <strong>{{total}}</strong>
+  </div>
+  <div class="card">
+    <h3>In Progress</h3>
+    <strong>{{inProgress}}</strong>
+  </div>
+  <div class="card">
+    <h3>Failed</h3>
+    <strong class="status-FAILED">{{failed}}</strong>
+  </div>
+  <div class="card">
+    <h3>Succeeded</h3>
+    <strong class="status-SUCCEEDED">{{succeeded}}</strong>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Recent Failures</h2>
+  <ul>
+    {{recentFailures}}
+  </ul>
+</div>

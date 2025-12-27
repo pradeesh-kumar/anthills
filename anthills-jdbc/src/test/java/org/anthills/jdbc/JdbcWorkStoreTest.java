@@ -49,7 +49,7 @@ final class JdbcWorkStoreTest {
     // createWork does not insert payload_type column (NOT NULL in schema), so should fail with RuntimeException
     byte[] payload = new byte[]{1, 2, 3};
     assertThrows(RuntimeException.class, () ->
-      store.createWork("typeA", payload, 1, "json", null)
+      store.createWork("typeA", payload, payload.getClass().getName(), 1, "json", null)
     );
   }
 

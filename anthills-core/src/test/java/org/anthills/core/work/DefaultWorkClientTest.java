@@ -124,7 +124,7 @@ public class DefaultWorkClientTest {
     assertTrue(ex.getMessage().contains("Failed to encode payload of type java.lang.String"));
     assertNotNull(ex.getCause());
     assertEquals("boom", ex.getCause().getMessage());
-    verify(store, never()).createWork(anyString(), any(), anyInt(), anyString(), any());
+    verify(store, never()).createWork(anyString(), any(), anyString(), anyInt(), anyString(), any());
   }
 
   @Test

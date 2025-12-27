@@ -1,0 +1,19 @@
+<h1>Work {{id}}</h1>
+
+<div class="card">
+  <p><strong>Status:</strong> {{status}}</p>
+  <p><strong>Type:</strong> {{workType}}</p>
+  <p><strong>Attempts:</strong> {{attemptCount}} / {{maxRetries}}</p>
+</div>
+
+<div class="card">
+  <p><strong>Owner:</strong> {{ownerId}}</p>
+  <p><strong>Lease Until:</strong> {{leaseUntil}}</p>
+</div>
+
+{{#if failureReason}}
+<div class="card">
+  <h3>Failure Reason</h3>
+  <pre>{{failureReason}}</pre>
+</div>
+{{/if}}
