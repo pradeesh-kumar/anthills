@@ -2,6 +2,17 @@ package org.anthills.api.work;
 
 import java.time.Duration;
 
+/**
+ * Configuration for a {@link WorkRequestProcessor}'s polling and execution behavior.
+ *
+ * @param workerThreads number of concurrent worker threads
+ * @param defaultMaxRetries default retry limit per request when the request does not specify one
+ * @param maxAllowedRetries hard upper bound on retries to avoid poison message amplification
+ * @param pollInterval interval between store polls when no work is available
+ * @param leaseDuration how long a claimed work item is leased to a worker
+ * @param leaseRenewInterval how frequently an active lease is renewed (must be < leaseDuration)
+ * @param shutdownTimeout maximum time to wait for graceful shutdown
+ */
 public record ProcessorConfig(
   int workerThreads,
   int defaultMaxRetries,
@@ -12,6 +23,15 @@ public record ProcessorConfig(
   Duration shutdownTimeout
 ) {
 
+  /**
+   * Validates configuration invariants:
+   * - workerThreads > 0
+   * - retries >= 0
+   * - defaultMaxRetries <= maxAllowedRetries
+   * - leaseRenewInterval < leaseDuration
+   *
+   * @throws IllegalArgumentException if configuration is invalid
+   */
   public ProcessorConfig {
     if (workerThreads <= 0) {
       throw new IllegalArgumentException("workerThreads must be > 0");
@@ -27,6 +47,19 @@ public record ProcessorConfig(
     }
   }
 
+  /**
+   * Provides a sensible default configuration derived from available CPUs.
+   *
+   * workerThreads = max(1, availableProcessors)
+   * defaultMaxRetries = 3
+   * maxAllowedRetries = 10
+   * pollInterval = 1s
+   * leaseDuration = 30s
+   * leaseRenewInterval = 10s
+   * shutdownTimeout = 30s
+   *
+   * @return default processor configuration
+   */
   public static ProcessorConfig defaults() {
     int cpu = Runtime.getRuntime().availableProcessors();
 

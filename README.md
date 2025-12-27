@@ -1,7 +1,7 @@
 # 🐜 Anthills
 ![logo.png](logo.png)
 
-**Anthills** is a **lightweight distributed database-backed Job and Worker library for Java.
+**Anthills** is a **lightweight distributed database-backed** Job and Worker library for Java.
 It helps you run **Scheduled Jobs** and **background workers** safely across **multiple nodes**, without leader election, message queues, or extra infrastructure.
 
 > #### Simple Idea:
@@ -55,7 +55,6 @@ Just **leases + workers.**
 ## Core concepts
 Anthills has two main primitives:
 
----
 ### 🕒 LeasedScheduler
 >*“Run this job periodically, but only on one node.”*
 

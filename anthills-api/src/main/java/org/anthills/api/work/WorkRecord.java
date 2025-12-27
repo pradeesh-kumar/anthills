@@ -4,6 +4,43 @@ import org.anthills.api.codec.PayloadCodec;
 
 import java.time.Instant;
 
+/**
+ * Binary representation of a stored work request as persisted in a {@link WorkStore}.
+ * It contains serialized payload bytes plus metadata and can be converted to a typed
+ * {@link WorkRequest} using a {@link org.anthills.api.codec.PayloadCodec}.
+ *
+ * Record components:
+ * - id: unique identifier
+ * - workType: routing key
+ * - payload: serialized bytes
+ * - payloadType: fully qualified class name of the original payload
+ * - payloadVersion: semantic schema version used by the codec
+ * - codec: name of the codec used to serialize the payload
+ * - status: lifecycle state
+ * - maxRetries: optional cap on attempts
+ * - attemptCount: number of attempts so far
+ * - ownerId: current lease owner
+ * - leaseUntil: lease expiration
+ * - failureReason: brief description/truncated stack trace
+ * - createdTs/updatedTs/startedTs/completedTs: lifecycle timestamps
+ *
+ * @param id unique identifier
+ * @param workType logical routing key
+ * @param payload serialized payload bytes
+ * @param payloadType fully qualified class name of the payload
+ * @param payloadVersion payload schema version
+ * @param codec name of the codec used
+ * @param status lifecycle status
+ * @param maxRetries optional cap on allowed attempts
+ * @param attemptCount number of attempts so far
+ * @param ownerId logical owner currently holding the lease
+ * @param leaseUntil lease expiration timestamp
+ * @param failureReason brief description/truncated stack trace for failures
+ * @param createdTs creation time
+ * @param updatedTs last update time
+ * @param startedTs first start time
+ * @param completedTs completion time
+ */
 public record WorkRecord(
   String id,
 
@@ -33,6 +70,14 @@ public record WorkRecord(
   Instant startedTs,
   Instant completedTs) {
 
+  /**
+   * Decodes the stored payload to its declared {@code payloadType} using the provided codec.
+   *
+   * @param codec payload codec to use for decoding
+   * @return a typed {@link WorkRequest} with the decoded payload
+   * @throws IllegalStateException if the payload type cannot be loaded or decoding fails
+   * @throws IllegalArgumentException if the codec rejects the payload
+   */
   public WorkRequest<?> toWorkRequest(PayloadCodec codec) {
     Object decoded;
     try {
@@ -71,6 +116,16 @@ public record WorkRecord(
       .build();
   }
 
+  /**
+   * Decodes the stored payload to the requested {@code expectedPayloadType} using the provided codec.
+   *
+   * @param codec payload codec to use for decoding
+   * @param expectedPayloadType target payload class; must be assignable from the stored {@code payloadType}
+   * @param <T> typed payload class
+   * @return a typed {@link WorkRequest} with the decoded payload
+   * @throws IllegalArgumentException if the stored payload type is incompatible with {@code expectedPayloadType}
+   * @throws IllegalStateException if the payload type cannot be loaded or decoding fails
+   */
   @SuppressWarnings("unchecked")
   public <T> WorkRequest<T> toWorkRequest(
     PayloadCodec codec,
@@ -116,10 +171,20 @@ public record WorkRecord(
       .build();
   }
 
+  /**
+   * Creates a new builder for {@link WorkRecord} instances.
+   *
+   * @return builder instance
+   */
   public static Builder builder() {
     return new Builder();
   }
 
+  /**
+   * Creates a builder pre-populated from this record.
+   *
+   * @return a builder initialized with this record's values
+   */
   public Builder toBuilder() {
     return new Builder()
       .id(this.id())
@@ -140,6 +205,11 @@ public record WorkRecord(
       .completedTs(this.completedTs());
   }
 
+  /**
+   * Fluent builder for {@link WorkRecord} instances.
+   *
+   * Setters mirror the record components and return {@code this} for chaining.
+   */
   public static final class Builder {
     private String id;
 
@@ -256,6 +326,12 @@ public record WorkRecord(
       return this;
     }
 
+    /**
+     * Populates this builder with values from an existing {@link WorkRecord}.
+     *
+     * @param r source record
+     * @return this builder
+     */
     public Builder from(WorkRecord r) {
       this.id = r.id();
       this.workType = r.workType();
@@ -276,6 +352,11 @@ public record WorkRecord(
       return this;
     }
 
+    /**
+     * Builds an immutable {@link WorkRecord} instance from the configured values.
+     *
+     * @return new WorkRecord
+     */
     public WorkRecord build() {
       return new WorkRecord(
         id,
