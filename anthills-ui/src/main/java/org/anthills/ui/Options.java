@@ -9,5 +9,7 @@ public record Options(
   boolean enableWriteActions,
   BasicAuth auth,
   int threads,
-  WorkStore workStore
+  WorkStore workStore,
+  TlsOptions tls
 ) {}
+

@@ -10,5 +10,6 @@ public interface AnthillsUIBuilder {
   AnthillsUIBuilder enableWriteActions(boolean enabled); // default: false
   AnthillsUIBuilder basicAuth(String username, String password);
   AnthillsUIBuilder threads(int threads);
+  AnthillsUIBuilder tls(String certificatePemPath, String privateKeyPemPath);
   AnthillsUI build();
 }

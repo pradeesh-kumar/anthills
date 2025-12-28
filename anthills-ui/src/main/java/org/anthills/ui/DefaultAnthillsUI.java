@@ -2,10 +2,28 @@ package org.anthills.ui;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpsServer;
+import com.sun.net.httpserver.HttpsConfigurator;
+import com.sun.net.httpserver.HttpsParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyFactory;
+import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.SecureRandom;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -31,13 +49,14 @@ public class DefaultAnthillsUI implements AnthillsUI {
   public void start() {
     if (!running.compareAndSet(false, true)) return;
     try {
-      server = HttpServer.create(new InetSocketAddress(options.bindAddress(), options.port()), 0);
+      server = createServer();
       executor = Executors.newFixedThreadPool(options.threads());
       server.setExecutor(executor);
       registerRoutes();
       server.start();
-      log.info("Anthills UI started at http://{}:{}{}", options.bindAddress(), options.port(), options.contextPath());
-    } catch (IOException e) {
+      String scheme = (options.tls() != null ? "https" : "http");
+      log.info("Anthills UI started at {}://{}:{}{}", scheme, options.bindAddress(), options.port(), options.contextPath());
+    } catch (Exception e) {
       throw new RuntimeException("Failed to start Anthills UI", e);
     }
   }
@@ -55,7 +74,7 @@ public class DefaultAnthillsUI implements AnthillsUI {
   }
 
   private void registerRoutes() {
-    server.createContext(resolvePath("/"), this::handle);
+    server.createContext(options.contextPath(), this::handle);
   }
 
   private void handle(HttpExchange exchange) throws IOException {
@@ -104,9 +123,95 @@ public class DefaultAnthillsUI implements AnthillsUI {
     routeHandler.error(exchange, 404, "Not Found");
   }
 
-  private String resolvePath(String path) {
-    String resolved = options.contextPath() + path;
-    return resolved.replaceAll("//", "/");
+  private HttpServer createServer() throws Exception {
+    InetSocketAddress addr = new InetSocketAddress(options.bindAddress(), options.port());
+    if (options.tls() == null) {
+      return HttpServer.create(addr, 0);
+    }
+    SSLContext ctx = buildSslContext(options.tls());
+    HttpsServer httpsServer = HttpsServer.create(addr, 0);
+    httpsServer.setHttpsConfigurator(new HttpsConfigurator(ctx) {
+      @Override
+      public void configure(HttpsParameters params) {
+        SSLParameters sslParams = ctx.getDefaultSSLParameters();
+        params.setSSLParameters(sslParams);
+      }
+    });
+    return httpsServer;
+  }
+
+  private SSLContext buildSslContext(TlsOptions tls) throws Exception {
+    String certPem = Files.readString(Path.of(tls.certificatePemPath()));
+    String keyPem = Files.readString(Path.of(tls.privateKeyPemPath()));
+    X509Certificate[] chain = parseCertificates(certPem);
+    PrivateKey key = parsePrivateKey(keyPem);
+
+    KeyStore ks = KeyStore.getInstance("JKS");
+    ks.load(null, null);
+    char[] pass = "changeit".toCharArray();
+    ks.setKeyEntry("server", key, pass, chain);
+
+    KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+    kmf.init(ks, pass);
+
+    SSLContext ctx = SSLContext.getInstance("TLS");
+    ctx.init(kmf.getKeyManagers(), null, new SecureRandom());
+    return ctx;
+  }
+
+  private static X509Certificate[] parseCertificates(String pem) throws Exception {
+    List<X509Certificate> certs = new ArrayList<>();
+    CertificateFactory cf = CertificateFactory.getInstance("X.509");
+    String start = "-----BEGIN CERTIFICATE-----";
+    String end = "-----END CERTIFICATE-----";
+    int idx = 0;
+    while (true) {
+      int s = pem.indexOf(start, idx);
+      if (s == -1) break;
+      int e = pem.indexOf(end, s);
+      if (e == -1) break;
+      String base64 = pem.substring(s + start.length(), e).replaceAll("\\s+", "");
+      byte[] der = Base64.getDecoder().decode(base64);
+      X509Certificate cert = (X509Certificate) cf.generateCertificate(new java.io.ByteArrayInputStream(der));
+      certs.add(cert);
+      idx = e + end.length();
+    }
+    if (certs.isEmpty()) {
+      throw new IllegalArgumentException("No X.509 certificates found in certificate PEM");
+    }
+    return certs.toArray(new X509Certificate[0]);
+  }
+
+  private static PrivateKey parsePrivateKey(String pem) throws Exception {
+    String base64 = getBase64(pem);
+    byte[] der = Base64.getDecoder().decode(base64);
+    PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(der);
+
+    Exception last = null;
+    for (String alg : new String[] {"RSA", "EC", "DSA"}) {
+      try {
+        return KeyFactory.getInstance(alg).generatePrivate(spec);
+      } catch (Exception ex) {
+        last = ex;
+      }
+    }
+    throw new RuntimeException("Unsupported private key algorithm in PKCS#8", last);
+  }
+
+  private static String getBase64(String pem) {
+    String pkcs8Header = "-----BEGIN PRIVATE KEY-----";
+    String pkcs8Footer = "-----END PRIVATE KEY-----";
+    String pkcs1Header = "-----BEGIN RSA PRIVATE KEY-----";
+    if (pem.contains(pkcs1Header)) {
+      throw new IllegalArgumentException("PKCS#1 (BEGIN RSA PRIVATE KEY) format not supported. Provide PKCS#8 (BEGIN PRIVATE KEY).");
+    }
+    int s = pem.indexOf(pkcs8Header);
+    int e = pem.indexOf(pkcs8Footer);
+    if (s == -1 || e == -1) {
+      throw new IllegalArgumentException("Private key must be in PKCS#8 PEM format (BEGIN PRIVATE KEY)");
+    }
+    String base64 = pem.substring(s + pkcs8Header.length(), e).replaceAll("\\s+", "");
+    return base64;
   }
 
   public static AnthillsUIBuilder builder() {

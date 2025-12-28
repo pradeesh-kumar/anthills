@@ -12,6 +12,7 @@ public final class DefaultAnthillsUIBuilder implements AnthillsUIBuilder {
   private String username;
   private String password;
   private int threads = 4;
+  private TlsOptions tls;
 
   DefaultAnthillsUIBuilder() {}
 
@@ -58,12 +59,18 @@ public final class DefaultAnthillsUIBuilder implements AnthillsUIBuilder {
   }
 
   @Override
+  public AnthillsUIBuilder tls(String certificatePemPath, String privateKeyPemPath) {
+    this.tls = new TlsOptions(certificatePemPath, privateKeyPemPath);
+    return this;
+  }
+
+  @Override
   public AnthillsUI build() {
     BasicAuth auth = null;
     if (!((username == null || password == null) || username.isEmpty() || password.isEmpty())) {
       auth = new BasicAuth(username, password, "default");
     }
-    Options options = new Options(port, bindAddress, contextPath, enableWriteActions, auth, threads, store);
+    Options options = new Options(port, bindAddress, contextPath, enableWriteActions, auth, threads, store, tls);
     return new DefaultAnthillsUI(options);
   }
 }

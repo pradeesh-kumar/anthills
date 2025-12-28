@@ -18,6 +18,8 @@ public class AnthillsUITest {
       .bindAddress("localhost")
       .threads(4)
       .basicAuth("admin", "admin")
+      // Uncomment to enable HTTPS with PEM files
+      // .tls("/path/to/cert.pem", "/path/to/key.pem")
       .build();
     ui.start();
   }
