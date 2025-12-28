@@ -42,18 +42,6 @@ final class JdbcWorkStoreTest {
   }
 
   @Test
-  void createWork_currently_fails_due_to_missing_payload_type_in_schema() {
-    ds = TestJdbc.newH2DataSource();
-    store = JdbcWorkStore.create(ds);
-
-    // createWork does not insert payload_type column (NOT NULL in schema), so should fail with RuntimeException
-    byte[] payload = new byte[]{1, 2, 3};
-    assertThrows(RuntimeException.class, () ->
-      store.createWork("typeA", payload, payload.getClass().getName(), 1, "json", null)
-    );
-  }
-
-  @Test
   void listWork_filters_and_paginates() throws Exception {
     ds = TestJdbc.newH2DataSource();
     store = JdbcWorkStore.create(ds);
