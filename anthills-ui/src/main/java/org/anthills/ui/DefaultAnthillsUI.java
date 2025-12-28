@@ -29,6 +29,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * Default {@link AnthillsUI} implementation using JDK's HTTP server.
+ * Starts {@link com.sun.net.httpserver.HttpsServer} when {@link TlsOptions} are provided,
+ * otherwise falls back to {@link com.sun.net.httpserver.HttpServer}.
+ */
 public class DefaultAnthillsUI implements AnthillsUI {
 
   private static final Logger log = LoggerFactory.getLogger(DefaultAnthillsUI.class);
@@ -46,6 +51,12 @@ public class DefaultAnthillsUI implements AnthillsUI {
   }
 
   @Override
+  /**
+   * Starts the HTTP(S) server with the configured executor and routes.
+   * Chooses HTTPS when {@link Options#tls()} is present; otherwise HTTP.
+   *
+   * @throws RuntimeException when server creation or start fails
+   */
   public void start() {
     if (!running.compareAndSet(false, true)) return;
     try {
@@ -62,6 +73,10 @@ public class DefaultAnthillsUI implements AnthillsUI {
   }
 
   @Override
+  /**
+   * Stops the server immediately and shuts down the executor service.
+   * No-op if already stopped.
+   */
   public void stop() {
     if (!running.compareAndSet(true, false)) return;
     server.stop(0);
@@ -69,14 +84,28 @@ public class DefaultAnthillsUI implements AnthillsUI {
   }
 
   @Override
+  /**
+   * Indicates whether the UI server is currently running.
+   *
+   * @return true if started and not yet stopped
+   */
   public boolean isRunning() {
     return running.get();
   }
 
+  /**
+   * Registers all supported UI routes on the underlying server.
+   */
   private void registerRoutes() {
     server.createContext(options.contextPath(), this::handle);
   }
 
+  /**
+   * Central request dispatcher. Applies optional basic auth and delegates to route handlers.
+   *
+   * @param exchange incoming HTTP exchange
+   * @throws IOException when writing the response fails
+   */
   private void handle(HttpExchange exchange) throws IOException {
     String path = exchange.getRequestURI().getPath();
     log.debug("Received request for path {}", path);
@@ -123,6 +152,12 @@ public class DefaultAnthillsUI implements AnthillsUI {
     routeHandler.error(exchange, 404, "Not Found");
   }
 
+  /**
+   * Creates an {@link HttpServer} or {@link HttpsServer} based on {@link Options#tls()}.
+   *
+   * @return configured HTTP or HTTPS server instance
+   * @throws Exception if TLS initialization fails
+   */
   private HttpServer createServer() throws Exception {
     InetSocketAddress addr = new InetSocketAddress(options.bindAddress(), options.port());
     if (options.tls() == null) {
@@ -140,6 +175,14 @@ public class DefaultAnthillsUI implements AnthillsUI {
     return httpsServer;
   }
 
+  /**
+   * Builds an {@link javax.net.ssl.SSLContext} using the provided certificate chain (PEM)
+   * and private key (PKCS#8 PEM).
+   *
+   * @param tls TLS file paths (certificate chain PEM and private key PEM)
+   * @return initialized SSL context
+   * @throws Exception if the certificate or key cannot be parsed or the context cannot be initialized
+   */
   private SSLContext buildSslContext(TlsOptions tls) throws Exception {
     String certPem = Files.readString(Path.of(tls.certificatePemPath()));
     String keyPem = Files.readString(Path.of(tls.privateKeyPemPath()));
@@ -159,6 +202,14 @@ public class DefaultAnthillsUI implements AnthillsUI {
     return ctx;
   }
 
+  /**
+   * Parses one or more X.509 certificates from a PEM string.
+   * The method accepts a bundle (leaf first, followed by intermediates).
+   *
+   * @param pem certificate PEM content
+   * @return array containing the parsed certificate chain
+   * @throws Exception if parsing fails or no certificates are found
+   */
   private static X509Certificate[] parseCertificates(String pem) throws Exception {
     List<X509Certificate> certs = new ArrayList<>();
     CertificateFactory cf = CertificateFactory.getInstance("X.509");
@@ -182,6 +233,14 @@ public class DefaultAnthillsUI implements AnthillsUI {
     return certs.toArray(new X509Certificate[0]);
   }
 
+  /**
+   * Parses a PKCS#8 private key from a PEM string, attempting common algorithms (RSA, EC, DSA).
+   *
+   * @param pem PKCS#8 private key PEM content
+   * @return parsed {@link PrivateKey}
+   * @throws RuntimeException if the algorithm is unsupported
+   * @throws Exception for general parsing errors
+   */
   private static PrivateKey parsePrivateKey(String pem) throws Exception {
     String base64 = getBase64(pem);
     byte[] der = Base64.getDecoder().decode(base64);
@@ -198,6 +257,13 @@ public class DefaultAnthillsUI implements AnthillsUI {
     throw new RuntimeException("Unsupported private key algorithm in PKCS#8", last);
   }
 
+  /**
+   * Extracts the base64 body from a PKCS#8 private key PEM string.
+   *
+   * @param pem PEM content
+   * @return base64 string representing the DER key
+   * @throws IllegalArgumentException when the PEM is not PKCS#8 or is malformed
+   */
   private static String getBase64(String pem) {
     String pkcs8Header = "-----BEGIN PRIVATE KEY-----";
     String pkcs8Footer = "-----END PRIVATE KEY-----";

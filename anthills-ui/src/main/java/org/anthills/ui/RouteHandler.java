@@ -15,6 +15,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Handles UI routes and delegates rendering to {@link PageRenderer}.
+ * Uses the configured {@link org.anthills.api.work.WorkStore} to fetch data.
+ */
 final class RouteHandler {
 
   private static final Logger log = LoggerFactory.getLogger(RouteHandler.class);
@@ -27,6 +31,12 @@ final class RouteHandler {
     this.renderer = new PageRenderer();
   }
 
+  /**
+   * Renders the dashboard page.
+   *
+   * @param exchange current HTTP exchange
+   * @throws IOException when writing the response fails
+   */
   void handleDashboard(HttpExchange exchange) throws IOException {
     try {
       var query = WorkQuery.builder()
@@ -40,6 +50,12 @@ final class RouteHandler {
     }
   }
 
+  /**
+   * Renders the work list page.
+   *
+   * @param exchange current HTTP exchange
+   * @throws IOException when writing the response fails
+   */
   void handleWork(HttpExchange exchange) throws IOException {
     try {
       var query = WorkQuery.builder()
@@ -57,6 +73,13 @@ final class RouteHandler {
     }
   }
 
+  /**
+   * Renders the work details page for the given work id.
+   *
+   * @param exchange current HTTP exchange
+   * @param id work identifier
+   * @throws IOException when writing the response fails
+   */
   void handleWorkDetails(HttpExchange exchange, String id) throws IOException {
     try {
       Optional<WorkRecord> workRecord = workStore.getWork(id);
@@ -73,6 +96,12 @@ final class RouteHandler {
     }
   }
 
+  /**
+   * Renders the scheduler leases page.
+   *
+   * @param exchange current HTTP exchange
+   * @throws IOException when writing the response fails
+   */
   void handleScheduler(HttpExchange exchange) throws IOException {
     try {
       List<SchedulerLease> leases = workStore.listSchedulerLeases();
@@ -84,10 +113,21 @@ final class RouteHandler {
     }
   }
 
+  /**
+   * Renders an error response with the given status code and message.
+   *
+   * @param exchange current HTTP exchange
+   * @param statusCode HTTP status code
+   * @param message error message to display
+   * @throws IOException when writing the response fails
+   */
   void error(HttpExchange exchange, int statusCode, String message) throws IOException {
     error(exchange, statusCode, message, null);
   }
 
+  /**
+   * Renders an error response and optionally includes a stacktrace.
+   */
   private void error(HttpExchange exchange, int statusCode, String message, Throwable t) throws IOException {
     renderer.render(exchange, "error", Map.of(
       "title", "Error",
@@ -97,6 +137,9 @@ final class RouteHandler {
     ));
   }
 
+  /**
+   * Extracts the stacktrace text for the given throwable or returns an empty string if null.
+   */
   private static String extractStackTrace(Throwable t) {
     if (t == null) {
       return "";
