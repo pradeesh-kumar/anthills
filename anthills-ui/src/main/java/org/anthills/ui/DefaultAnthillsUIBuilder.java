@@ -59,7 +59,11 @@ public final class DefaultAnthillsUIBuilder implements AnthillsUIBuilder {
 
   @Override
   public AnthillsUI build() {
-    Options options = new Options(port, bindAddress, contextPath, enableWriteActions, username, password, threads, store);
+    BasicAuth auth = null;
+    if (!((username == null || password == null) || username.isEmpty() || password.isEmpty())) {
+      auth = new BasicAuth(username, password, "default");
+    }
+    Options options = new Options(port, bindAddress, contextPath, enableWriteActions, auth, threads, store);
     return new DefaultAnthillsUI(options);
   }
 }

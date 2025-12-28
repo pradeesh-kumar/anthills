@@ -61,6 +61,9 @@ public class DefaultAnthillsUI implements AnthillsUI {
   private void handle(HttpExchange exchange) throws IOException {
     String path = exchange.getRequestURI().getPath();
     log.debug("Received request for path {}", path);
+    if (options.auth() != null && !options.auth().authorize(exchange)) {
+      return;
+    }
     if (path.equals("/") || path.isEmpty()) {
       if (!"GET".equals(exchange.getRequestMethod())) {
         routeHandler.error(exchange, 405, "Method not allowed");

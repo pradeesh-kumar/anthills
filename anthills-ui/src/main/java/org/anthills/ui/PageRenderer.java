@@ -13,7 +13,7 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
-public final class PageRenderer {
+final class PageRenderer {
 
   private static final Logger log = LoggerFactory.getLogger(PageRenderer.class);
 

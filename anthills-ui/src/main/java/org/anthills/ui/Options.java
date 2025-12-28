@@ -7,8 +7,7 @@ public record Options(
   String bindAddress,
   String contextPath,
   boolean enableWriteActions,
-  String username,
-  String password,
+  BasicAuth auth,
   int threads,
   WorkStore workStore
 ) {}
