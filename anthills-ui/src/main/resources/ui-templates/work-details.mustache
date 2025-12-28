@@ -1,9 +1,13 @@
-<h1>Work {{id}}</h1>
+{{> layout}}
+
+<h1>Work {{workRecord.id}}</h1>
 
 <div class="card">
-  <p><strong>Status:</strong> {{status}}</p>
-  <p><strong>Type:</strong> {{workType}}</p>
-  <p><strong>Attempts:</strong> {{attemptCount}} / {{maxRetries}}</p>
+  <p><strong>Status:</strong> {{workRecord.status}}</p>
+  <p><strong>Type:</strong> {{workRecord.workType}}</p>
+  <p><strong>Payload Type:</strong> {{workRecord.payloadType}}</p>
+  <p><strong>Codec: </strong> {{workRecord.codec}}</p>
+  <p><strong>Attempts:</strong> {{workRecord.attemptCount}} / {{workRecord.maxRetries}}</p>
 </div>
 
 <div class="card">
@@ -11,9 +15,16 @@
   <p><strong>Lease Until:</strong> {{leaseUntil}}</p>
 </div>
 
-{{#if failureReason}}
+<div class="card">
+  <p><strong>Created Time:</strong> {{workRecord.createdTs}}</p>
+  <p><strong>Updated Time:</strong> {{workRecord.updatedTs}}</p>
+  <p><strong>Started Time:</strong> {{workRecord.startedTs}}</p>
+  <p><strong>Completed Time:</strong> {{workRecord.completedTs}}</p>
+</div>
+
+{{#failureReason}}
 <div class="card">
   <h3>Failure Reason</h3>
   <pre>{{failureReason}}</pre>
 </div>
-{{/if}}
+{{/failureReason}}

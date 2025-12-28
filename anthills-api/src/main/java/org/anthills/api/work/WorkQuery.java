@@ -73,8 +73,8 @@ public record WorkQuery(
     private Instant createdAfter;
     private Instant createdBefore;
     private Page page;
-    private Integer limit;
-    private Integer offset;
+    private int limit = 1;
+    private int offset;
 
     /**
      * Sets the set of concrete WorkRequest IDs to include.
@@ -246,12 +246,8 @@ public record WorkQuery(
     public WorkQuery build() {
       Page p = this.page;
       if (p == null) {
-        if (this.limit == null || this.offset == null) {
-          throw new IllegalStateException("page is required; set page(Page) or both limit(int) and offset(int)");
-        }
         p = Page.of(this.limit, this.offset);
       }
-
       Set<String> idsCopy = (this.ids == null) ? Set.of() : Set.copyOf(this.ids);
       Set<WorkRequest.Status> statusesCopy = (this.statuses == null) ? null : Set.copyOf(this.statuses);
 

@@ -61,7 +61,7 @@ public class DefaultWorkClientTest {
       .createdTs(Instant.now())
       .build();
 
-    when(store.createWork(eq(workType), same(encoded), eq(version), eq(codecName), isNull())).thenReturn(record);
+    when(store.createWork(eq(workType), same(encoded), eq(String.class.getName()), eq(version), eq(codecName), isNull())).thenReturn(record);
     when(codec.decode(encoded, String.class, version)).thenReturn(payload);
 
     WorkRequest<String> result = client.submit(workType, payload);
@@ -75,7 +75,7 @@ public class DefaultWorkClientTest {
 
     // Verify interactions
     verify(codec).encode(payload, version);
-    verify(store).createWork(eq(workType), same(encoded), eq(version), eq(codecName), isNull());
+    verify(store).createWork(eq(workType), same(encoded), eq(String.class.getName()), eq(version), eq(codecName), isNull());
     verify(codec).decode(encoded, String.class, version);
   }
 
@@ -102,14 +102,14 @@ public class DefaultWorkClientTest {
       .createdTs(Instant.now())
       .build();
 
-    when(store.createWork(eq(workType), same(encoded), eq(2), eq("bin"), eq(5))).thenReturn(record);
+    when(store.createWork(eq(workType), same(encoded), eq(String.class.getName()), eq(2), eq("bin"), eq(5))).thenReturn(record);
     when(codec.decode(encoded, String.class, 2)).thenReturn(payload);
 
     WorkRequest<String> result = client.submit(workType, payload, options);
     assertEquals("id-2", result.id());
     assertEquals(payload, result.payload());
 
-    verify(store).createWork(eq(workType), same(encoded), eq(2), eq("bin"), eq(5));
+    verify(store).createWork(eq(workType), same(encoded), eq(String.class.getName()), eq(2), eq("bin"), eq(5));
   }
 
   @Test

@@ -2,6 +2,7 @@ package org.anthills.jdbc;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.anthills.api.scheduler.SchedulerLease;
 import org.anthills.api.work.WorkQuery;
 import org.anthills.api.work.WorkRecord;
 import org.anthills.api.work.WorkRequest;
@@ -551,6 +552,30 @@ public final class JdbcWorkStore implements WorkStore {
       ps.executeUpdate();
       c.commit();
 
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Retrieves a list of all active scheduler leases.
+   *
+   * @return a list of {@link SchedulerLease} objects representing the current scheduler leases
+   */
+  @Override
+  public List<SchedulerLease> listSchedulerLeases() {
+    String sql = """
+      SELECT * FROM scheduler_lease
+    """;
+    try (Connection c = getConnection();
+    PreparedStatement ps = c.prepareStatement(sql)) {
+      ResultSet rs = ps.executeQuery();
+      List<SchedulerLease> leases = new ArrayList<>();
+      while (rs.next()) {
+        var lease = new SchedulerLease(rs.getString("job_name"), rs.getString("owner_id"), WorkRecordRowMapper.getInstantSafely(rs, "lease_until"));
+        leases.add(lease);
+      }
+      return leases;
     } catch (SQLException e) {
       throw new RuntimeException(e);
     }

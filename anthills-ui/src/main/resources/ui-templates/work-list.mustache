@@ -9,6 +9,9 @@
     <th>Status</th>
     <th>Attempts</th>
     <th>Owner</th>
+    <th>Created</th>
+    <th>Updated</th>
+    <th>Action</th>
   </tr>
 
   {{#workRequests}}
@@ -16,8 +19,11 @@
     <td><a href="/work/{{id}}">{{id}}</a></td>
     <td>{{workType}}</td>
     <td class="status-{{status}}">{{status}}</td>
-    <td>{{attempts}}</td>
+    <td>{{attemptCount}}</td>
     <td>{{ownerId}}</td>
+    <td>{{createdTs}}</td>
+    <td>{{updatedTs}}</td>
+    <td>Action</td>
   </tr>
   {{/workRequests}}
 </table>

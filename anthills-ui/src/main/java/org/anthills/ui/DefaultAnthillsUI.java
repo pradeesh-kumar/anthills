@@ -1,5 +1,6 @@
 package org.anthills.ui;
 
+import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,8 +55,50 @@ public class DefaultAnthillsUI implements AnthillsUI {
   }
 
   private void registerRoutes() {
-    server.createContext(resolvePath("/"), routeHandler::handleDashboard);
-    server.createContext(resolvePath("/work"), routeHandler::handleWork);
+    server.createContext(resolvePath("/"), this::handle);
+  }
+
+  private void handle(HttpExchange exchange) throws IOException {
+    String path = exchange.getRequestURI().getPath();
+    log.debug("Received request for path {}", path);
+    if (path.equals("/") || path.isEmpty()) {
+      if (!"GET".equals(exchange.getRequestMethod())) {
+        routeHandler.error(exchange, 405, "Method not allowed");
+        return;
+      }
+      routeHandler.handleDashboard(exchange);
+      return;
+    }
+    if (path.equals("/work")) {
+      if (!"GET".equals(exchange.getRequestMethod())) {
+        routeHandler.error(exchange, 405, "Method not allowed");
+        return;
+      }
+      routeHandler.handleWork(exchange);
+      return;
+    }
+    if (path.startsWith("/work/")) {
+      if (!"GET".equals(exchange.getRequestMethod())) {
+        routeHandler.error(exchange, 405, "Method not allowed");
+        return;
+      }
+      String id =  path.substring("/work/".length());
+      if (id.isEmpty() || id.contains("/")) {
+        routeHandler.error(exchange, 404, "Not found");
+        return;
+      }
+      routeHandler.handleWorkDetails(exchange, id);
+      return;
+    }
+    if (path.equals("/scheduler")) {
+      if (!"GET".equals(exchange.getRequestMethod())) {
+        routeHandler.error(exchange, 405, "Method not allowed");
+        return;
+      }
+      routeHandler.handleScheduler(exchange);
+      return;
+    }
+    routeHandler.error(exchange, 404, "Not Found");
   }
 
   private String resolvePath(String path) {

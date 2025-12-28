@@ -29,12 +29,6 @@
       <version>1.0-SNAPSHOT</version>
     </dependency>
     <dependency>
-      <groupId>com.zaxxer</groupId>
-      <artifactId>HikariCP</artifactId>
-    </dependency>
-
-    <!-- Runtime dependencies for examples -->
-    <dependency>
       <groupId>com.h2database</groupId>
       <artifactId>h2</artifactId>
       <scope>runtime</scope>

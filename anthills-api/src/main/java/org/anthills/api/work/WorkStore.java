@@ -1,5 +1,7 @@
 package org.anthills.api.work;
 
+import org.anthills.api.scheduler.SchedulerLease;
+
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -115,4 +117,11 @@ public interface WorkStore {
    * Release scheduler lease early (best-effort).
    */
   void releaseSchedulerLease(String jobName, String ownerId);
+
+  /**
+   * Retrieves a list of all active scheduler leases.
+   *
+   * @return a list of {@link SchedulerLease} objects representing the current scheduler leases
+   */
+  List<SchedulerLease> listSchedulerLeases();
 }

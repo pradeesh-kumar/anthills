@@ -1,3 +1,5 @@
+{{> layout}}
+
 <h1>Scheduler</h1>
 
 <table>
@@ -6,5 +8,11 @@
     <th>Owner</th>
     <th>Lease Until</th>
   </tr>
-  {{rows}}
+  {{#leases}}
+  <tr>
+    <td>{{jobName}}</td>
+    <td>{{ownerId}}</td>
+    <td>{{leaseUntil}}</td>
+  </tr>
+  {{/leases}}
 </table>

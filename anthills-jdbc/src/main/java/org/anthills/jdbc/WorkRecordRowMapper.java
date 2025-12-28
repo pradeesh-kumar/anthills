@@ -73,7 +73,7 @@ public final class WorkRecordRowMapper {
    * @return Instant value, or null if the column is SQL NULL
    * @throws SQLException if a JDBC access error occurs
    */
-  private static Instant getInstantSafely(ResultSet rs, String column) throws SQLException {
+  static Instant getInstantSafely(ResultSet rs, String column) throws SQLException {
     Timestamp ts = rs.getTimestamp(column);
     return ts != null ? ts.toInstant() : null;
   }

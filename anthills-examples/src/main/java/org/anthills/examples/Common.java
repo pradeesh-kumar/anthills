@@ -1,20 +1,17 @@
 package org.anthills.examples;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-
 import javax.sql.DataSource;
+import org.h2.jdbcx.JdbcDataSource;
 
 public final class Common {
 
-    private Common() {}
+  private Common() {}
 
-    public static DataSource dataSource() {
-        HikariConfig cfg = new HikariConfig();
-        cfg.setJdbcUrl("jdbc:postgresql://localhost:5432/anthills");
-        cfg.setUsername("anthills");
-        cfg.setPassword("anthills");
-        cfg.setMaximumPoolSize(10);
-        return new HikariDataSource(cfg);
-    }
+  public static DataSource dataSource() {
+    JdbcDataSource ds = new JdbcDataSource();
+    ds.setURL("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1");
+    ds.setUser("sa");
+    ds.setPassword("");
+    return ds;
+  }
 }

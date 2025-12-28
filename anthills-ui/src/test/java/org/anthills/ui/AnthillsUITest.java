@@ -4,9 +4,11 @@ import org.anthills.api.work.WorkStore;
 import org.anthills.core.JsonPayloadCodec;
 import org.anthills.jdbc.JdbcWorkStore;
 
+import java.util.concurrent.CountDownLatch;
+
 public class AnthillsUITest {
 
-  static void main() {
+  static void main() throws Exception {
     WorkStore store = JdbcWorkStore.create(TestJdbc.newH2DataSource());
     submitWork(store, "notification", "Hello World");
     submitWork(store, "notification", "Hi World");
@@ -20,6 +22,7 @@ public class AnthillsUITest {
       .build();
 
     ui.start();
+
   }
 
   private static void submitWork(WorkStore store, String workType, Object payload) {

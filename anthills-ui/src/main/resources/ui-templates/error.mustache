@@ -1,0 +1,11 @@
+{{> layout}}
+
+<h1>Oops Error</h1>
+
+<div class="card">
+  <h3>{{statusCode}} - {{message}}</h3>
+</div>
+
+{{#stacktrace}}
+<pre>{{stacktrace}}</pre>
+{{/stacktrace}}
